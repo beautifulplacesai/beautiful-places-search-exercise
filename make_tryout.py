@@ -331,7 +331,12 @@ suit. Rewrite the agent's **system prompt** so that every answer contains:
 
 Then ask the *same question* before and after. Which answer would you ship in the
 app? What single sentence in your prompt made the biggest difference? (Prompt
-engineering is an experimental science — change one thing at a time.)\
+engineering is an experimental science — change one thing at a time.)
+
+A real failure to defend against: while building this exercise, the agent once
+received the database's honest answer, *distrusted it because it wasn't famous*,
+replaced it with a well-known bridge found via web search — and invented a
+score for it. Write a rule that prevents exactly this, then try to provoke it.\
 """)
 
 code("""\
