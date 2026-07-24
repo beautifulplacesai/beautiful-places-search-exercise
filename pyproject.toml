@@ -1,0 +1,21 @@
+[project]
+name = "beautiful-places-search-exercise"
+version = "1.0.0"
+description = "Find Me a Beautiful Place — hands-on AI search exercise (KCL Foundations of AI summer school)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=16",
+    "matplotlib>=3.8",
+    "pillow>=10",
+    "requests>=2.31",
+    "torch>=2.2",
+    "clip @ git+https://github.com/openai/CLIP.git",
+    "jupyter>=1.0",
+    "langchain>=1.0",
+    "langchain-ollama>=1.0",
+]
+
+[tool.uv]
+# torch CPU/MPS wheels are fine for this exercise on all platforms
