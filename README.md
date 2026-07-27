@@ -42,8 +42,6 @@ ollama pull gemma4:e2b     # then set MODEL = "gemma4:e2b" in the notebook
 While the notebooks run, expect them to use 6 to 7 GB of memory in total
 (the LLM, the CLIP model, and Jupyter). Close other heavy apps if your
 laptop feels slow.
-```text
-```
 
 **4. Tavily key (web-search parts only):** sign up free at
 [app.tavily.com](https://app.tavily.com) (no card; 1,000 searches/month), then:
@@ -55,6 +53,8 @@ cp .env.example .env    # then open .env and paste your key in
 `.env` is gitignored, so the key stays on your machine.
 
 ## Run
+
+From inside the `beautiful-places-search-exercise` folder:
 
 ```bash
 uv run jupyter notebook
