@@ -370,6 +370,11 @@ md("""\
 A name, a score, photos as evidence. This is a real answer, and only our
 data can give it.
 
+One detail worth noticing: **all five winners are water**. Nobody told the
+model to prefer water. It learned that from 200,000+ human ratings, and the
+research behind our scenic model found the same: water and trees drive
+scenicness. The data is showing you what people find beautiful.
+
 Now the promised question about that `max`. Run the same leaderboard for
 architecture:\
 """)
@@ -484,13 +489,16 @@ show_best_photo_of_each(top5_bridges, "The top 5 'bridge' places, best photo of 
 """)
 
 md("""\
-This technique is called **zero-shot classification**: classifying with no
-training examples, only label sentences. It cost us one matrix multiply.
+**Now count the actual bridges.** Gallows Bridge, yes. Morden Hall Park has
+a small white footbridge. But the Pergola is a garden walkway, and two of
+the five are simply pretty rivers. CLIP saw water, arches and railings, and
+guessed "bridge". Section 1's rule again: it judges by looks.
 
-Be honest about its quality: CLIP judges by looks (section 1's rule), so
-some labels are wrong. You will see a funny example in section 5. Good
-enough for a prototype. In production we do this job with a stronger, more
-expensive model that actually examines each image.
+This technique is called **zero-shot classification**: classifying with no
+training examples, only label sentences. It cost us one matrix multiply, and
+you just measured its real accuracy yourself: useful, and visibly imperfect.
+Good enough for a prototype. In production we do this job with a stronger,
+more expensive model that actually examines each image.
 
 One thing is still missing from our system. Users do not write pandas. They
 ask questions in their own words, in their own language, and they deserve an
