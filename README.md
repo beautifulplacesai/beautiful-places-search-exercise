@@ -23,7 +23,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 **2. Clone and install** (grabs Python deps incl. PyTorch, a few minutes):
 
 ```bash
-git clone <REPO_URL>
+git clone https://github.com/beautifulplacesai/beautiful-places-search-exercise.git
 cd beautiful-places-search-exercise
 uv sync
 ```
