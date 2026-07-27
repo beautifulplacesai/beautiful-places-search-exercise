@@ -30,17 +30,8 @@ md("""\
 
 ## 👉 github.com/beautifulplacesai/beautiful-places-search-exercise
 
-To follow along on your own laptop, type in a terminal:
-
-```
-git clone https://github.com/beautifulplacesai/beautiful-places-search-exercise.git
-cd beautiful-places-search-exercise
-uv sync
-uv run jupyter notebook
-```
-
-(You need [uv](https://docs.astral.sh/uv/) installed; one command, on the
-page linked. For section 4 you also need [Ollama](https://ollama.com/download).)
+To follow along on your own laptop: open that page and **follow the README
+instructions**. Setup takes a few minutes; start now and let it run.
 
 This is the notebook presented in the session. Run what we run. Afterwards,
 `tryout.ipynb` in the same folder has today's ideas as exercises you build
@@ -746,8 +737,8 @@ has hints. We would love to see your best answers, and your best failures.
 
 ## 👉 github.com/beautifulplacesai/beautiful-places-search-exercise
 
-Everything (this notebook, the exercises, the data) is in that repository:
-clone it, `uv sync`, `uv run jupyter notebook`, open `tryout.ipynb`.\
+Everything (this notebook, the exercises, the data) is in that repository.
+Follow the README instructions there, then open `tryout.ipynb`.\
 """)
 
 nb["cells"] = cells
