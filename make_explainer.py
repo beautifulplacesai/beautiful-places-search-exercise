@@ -405,6 +405,43 @@ users see.
 **Audience: keep the windmill at number one, or demote it?**\
 """)
 
+md("""\
+### Beautiful, and close by
+
+"Most beautiful" is one question users ask. The other one is: **what is
+beautiful near me?** Our data has every photo's location, so this is one
+filter away. The distance formula for two points on the Earth is called
+haversine; take it as given.
+
+One honest simplification: "me" is **hardcoded to this room**. We typed the
+coordinates of King's College into the notebook. In the real app, your
+phone's GPS supplies them instead; everything else works exactly the same.\
+""")
+
+code("""\
+def haversine_km(lat1, lon1, lat2, lon2):
+    \"\"\"Distance in km between two points on Earth. Works on whole columns.\"\"\"
+    R = 6371.0
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    a = (np.sin((lat2 - lat1) / 2) ** 2
+         + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+HERE = (51.5115, -0.1160)      # King's College London, Strand campus
+
+photos["km_away"] = haversine_km(HERE[0], HERE[1],
+                                 photos["latitude"], photos["longitude"])
+
+walkable = photos[photos["km_away"] <= 2.0]
+show_best_photo_of_each(leaderboard(walkable, top=5),
+                        "The most beautiful places within 2 km of this room")\
+""")
+
+md("""\
+Beauty scores plus one distance filter: a walking recommendation. Try one
+after the session.\
+""")
+
 # ================================================================ section 3
 md("""\
 ## 3 · Creating new categories from the map
@@ -561,11 +598,12 @@ will build one tool for each ability from today, plus one new one:
 |---|---|---|
 | `search_photos` | find photos that match a description | section 1 |
 | `beauty_db` | rank places by measured beauty, by category | sections 2 and 3 |
+| `near_me` | the most beautiful places within walking distance | section 2 |
 | `web_search` | look up live facts on the web (Tavily, same as our pipeline) | new |
 
 One important detail before the code. Each function starts with a short
 description in quotes. That text is not decoration: **it is how the model
-decides which tool to use for which question.** Read the three descriptions
+decides which tool to use for which question.** Read the four descriptions
 below with that in mind.\
 """)
 
@@ -591,12 +629,29 @@ def beauty_db(subtype: str = None, top: int = 10) -> list:
     return leaderboard(d, top).reset_index().round(2).to_dict("records")
 
 @tool
+def near_me(km: float = 2.0) -> list:
+    \"\"\"The most beautiful places within km of the configured user location,
+    best first. Use when the user asks what is nearby or within walking
+    distance.\"\"\"
+    walkable = photos[photos["km_away"] <= km]
+    return leaderboard(walkable, top=5).reset_index().round(2).to_dict("records")
+
+@tool
 def web_search(query: str) -> list:
     \"\"\"Live web search: opening times, entry fees, what a place is known for.\"\"\"
     r = _rq.post("https://api.tavily.com/search",
                  json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3})
     return [{"title": h["title"], "content": h["content"][:300]}
             for h in r.json().get("results", [])]\
+""")
+
+md("""\
+One design note on `near_me`: it is hardcoded to King's College. Run this
+notebook at home in Tokyo and it still answers as if you were on the Strand.
+In the real app, the phone's GPS replaces our typed constant; nothing else
+changes. In both cases the location comes from the application, never from
+the model. The model's only decisions are whether to use the tool, and the
+radius.\
 """)
 
 md("""\
@@ -625,7 +680,7 @@ Always answer with:
 2. WHY: one or two sentences of reasoning grounded in the tool results.
 3. A practical tip (how to visit, best time, what to look for).\"\"\"
 
-agent = create_agent(llm, [search_photos, beauty_db, web_search], system_prompt=SYSTEM)
+agent = create_agent(llm, [search_photos, beauty_db, near_me, web_search], system_prompt=SYSTEM)
 
 def ask(question):
     \"\"\"Send a question to the agent. Print which tools it calls, then its answer.\"\"\"
@@ -655,6 +710,10 @@ ask("What is the most beautiful bridge in London?")\
 md("""\
 Not a famous landmark: a small footbridge in a Morden park. Finding beautiful
 places that fame forgot is exactly what the product is for.\
+""")
+
+code("""\
+ask("I want a short walk. What is beautiful near me?")\
 """)
 
 code("""\

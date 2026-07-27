@@ -658,24 +658,16 @@ and system prompt's? Fix and rerun.\
 
 # ================================================================ part 8
 md("""\
-## Part 8 ⭐⭐⭐⭐: Extensions (pick one)
+## Part 8 ⭐⭐⭐⭐: Extensions (pick one of two)
 
-**A. The duplicate problem.** Search "riverside sunset": near-identical
-photos of the same spot crowd the top. Fix it with MMR (maximal marginal
-relevance): pick results one at a time, each similar to the query but
-dissimilar to what you already picked
-(`score = λ·sim_to_query − (1−λ)·max_sim_to_picked`, everything from `emb`).
-First step: write a loop that greedily picks 6 photos with λ = 0.7, then
-compare against plain `search()` side by side.
-
-**B. The model that can see.** Gemma 4 is multimodal. Send your top-4 photos
+**A. The model that can see.** Gemma 4 is multimodal. Send your top-4 photos
 (the files are cached in `data/img_cache/`) plus the user's query, and let
 it pick the single best match, with a reason. You will have built a
 two-stage ranker: cheap CLIP recall, then a smart visual rerank. First
 step: `import ollama`, then one `ollama.chat(model=MODEL, messages=[...])`
 call with an `images=[path]` argument.
 
-**C. The ranking formula.** "Most beautiful park" ignores relevance; "misty
+**B. The ranking formula.** "Most beautiful park" ignores relevance; "misty
 park" ignores beauty. Build `hybrid_search(query, alpha)` ranking by
 `alpha·similarity + (1−alpha)·normalised_beauty`. First step: normalise
 `photos.score` to 0–1, then try alpha = 0, 0.5 and 1 on one query and watch
