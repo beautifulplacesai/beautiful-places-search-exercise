@@ -149,11 +149,13 @@ print(emb[0][:12].round(3))\
 """)
 
 md("""\
-Meaningless to us. The magic is *where* these numbers live: CLIP puts photos
-and **sentences** into the same space, arranged so that things which mean the
-same end up close together.
+Meaningless to us. But treat the 512 numbers as **coordinates: a position on
+a map**. Not a map of London, a map of *meanings*. CLIP arranges it so that
+photos of similar things get nearby positions: swan photos end up in one
+neighbourhood, churches in another.
 
-Watch: a sentence becomes 512 numbers of exactly the same kind.\
+The trick that makes search possible: CLIP can also place a **sentence** on
+the same map. Watch, a sentence becomes 512 numbers of exactly the same kind:\
 """)
 
 code("""\
@@ -171,20 +173,29 @@ print(sentence[:12].round(3))\
 """)
 
 md("""\
-Same shape, same space. So we can measure **how close the sentence is to any
-photo**. Here it is against three photos, one of which really shows swans:\
+Same shape, same map. So the question "how similar is this sentence to this
+photo?" becomes measurable: **how close are their two positions?**
+
+Try it: the sentence's position against three photos' positions. One photo
+really shows swans.\
 """)
 
 code("""\
-trio = photos.iloc[[378, 12, 307]]     # a common with swans, a church, a street
-for i, (_, r) in zip(trio.index, trio.iterrows()):
-    print(f"similarity {float(emb[i] @ sentence):.3f}   {r['name']}")
-show(trio)\
+swan_photo   = emb[378]     # Wimbledon Common, swans on the water
+church_photo = emb[12]      # St Pancras Old Church
+street_photo = emb[307]     # Well Street Common, no swans
+
+print("sentence vs swan photo:   ", round(float(sentence @ swan_photo), 3))
+print("sentence vs church photo: ", round(float(sentence @ church_photo), 3))
+print("sentence vs street photo: ", round(float(sentence @ street_photo), 3))
+show(photos.iloc[[378, 12, 307]])\
 """)
 
 md("""\
-Nearest wins. Do that against all 4,800 photos at once and you have a search
-engine. **The entire engine is five lines:**\
+The sentence's position is closest to the photo that means the same thing.
+That is the whole insight. A search engine is now nothing new: measure the
+sentence against **all 4,788 photos at once** and keep the closest six.
+**The entire engine is five lines:**\
 """)
 
 code("""\
