@@ -604,7 +604,10 @@ will build one tool for each ability from today, plus one new one:
 One important detail before the code. Each function starts with a short
 description in quotes. That text is not decoration: **it is how the model
 decides which tool to use for which question.** Read the four descriptions
-below with that in mind.\
+below with that in mind.
+
+Each data tool also displays the photos of what it returns, so you can see
+what the model sees before it answers.\
 """)
 
 code("""\
@@ -616,6 +619,7 @@ def search_photos(description: str) -> list:
     \"\"\"Find photos of London places matching a VISUAL description (looks, light,
     season). Returns place names, beauty scores and similarity.\"\"\"
     hits = search(description, k=6)
+    show(hits, note_col="sim")            # display what the model sees
     return hits[["name", "score", "sim"]].round(3).to_dict("records")
 
 @tool
@@ -626,7 +630,9 @@ def beauty_db(subtype: str = None, top: int = 10) -> list:
     castle, pub, canal, riverside, park, lake, woodland, street, monument,
     windmill, cemetery, modern.\"\"\"
     d = photos if subtype is None else photos[photos.subtype == subtype]
-    return leaderboard(d, top).reset_index().round(2).to_dict("records")
+    top_places = leaderboard(d, top)
+    show_best_photo_of_each(top_places)   # display what the model sees
+    return top_places.reset_index().round(2).to_dict("records")
 
 @tool
 def near_me(km: float = 2.0) -> list:
@@ -634,7 +640,9 @@ def near_me(km: float = 2.0) -> list:
     best first. Use when the user asks what is nearby or within walking
     distance.\"\"\"
     walkable = photos[photos["km_away"] <= km]
-    return leaderboard(walkable, top=5).reset_index().round(2).to_dict("records")
+    top_places = leaderboard(walkable, top=5)
+    show_best_photo_of_each(top_places)   # display what the model sees
+    return top_places.reset_index().round(2).to_dict("records")
 
 @tool
 def web_search(query: str) -> list:
