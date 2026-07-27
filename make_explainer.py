@@ -28,9 +28,23 @@ md("""\
 # Find Me a Beautiful Place
 ### Building search for Beautiful Places, live, in one notebook
 
-This is the notebook presented in the session. Open it and follow along, run
-what we run. Afterwards, `tryout.ipynb` contains the same ideas as exercises
-you build yourself.\
+## 👉 github.com/beautifulplacesai/beautiful-places-search-exercise
+
+To follow along on your own laptop, type in a terminal:
+
+```
+git clone https://github.com/beautifulplacesai/beautiful-places-search-exercise.git
+cd beautiful-places-search-exercise
+uv sync
+uv run jupyter notebook
+```
+
+(You need [uv](https://docs.astral.sh/uv/) installed; one command, on the
+page linked. For section 4 you also need [Ollama](https://ollama.com/download).)
+
+This is the notebook presented in the session. Run what we run. Afterwards,
+`tryout.ipynb` in the same folder has today's ideas as exercises you build
+yourself.\
 """)
 
 # ================================================================ setup
@@ -728,7 +742,12 @@ hard cases. You saw this same funnel in the lecture.
 Your notebook, `tryout.ipynb`, has everything from today as exercises: you
 will build the leaderboard yourself, invent your own categories, give the
 agent a geography tool, and write a better system prompt than ours. The TA
-has hints. We would love to see your best answers, and your best failures.\
+has hints. We would love to see your best answers, and your best failures.
+
+## 👉 github.com/beautifulplacesai/beautiful-places-search-exercise
+
+Everything (this notebook, the exercises, the data) is in that repository:
+clone it, `uv sync`, `uv run jupyter notebook`, open `tryout.ipynb`.\
 """)
 
 nb["cells"] = cells

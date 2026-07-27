@@ -1,7 +1,8 @@
 # Find Me a Beautiful Place 🌅
 
 Hands-on AI exercise from the [Beautiful Places](https://www.beautifulplaces.ai/)
-guest session at the KCL *Foundations of AI* summer school.
+guest session at the KCL *Foundations of AI* summer school. If you are here
+from the session: welcome, the three setup steps below take a few minutes.
 
 You'll build, on your own laptop: a **semantic photo search engine** (CLIP
 embeddings) over ~5,000 verified beautiful places in London → discover where
