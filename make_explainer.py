@@ -49,8 +49,9 @@ start early, sections 1 to 3 work while it downloads).
 Prerequisites (see README): `uv sync` done; [Ollama](https://ollama.com/download)
 installed for section 4; and for the web tool, a free
 [Tavily](https://app.tavily.com) key in a `.env` file (copy `.env.example` to
-`.env` and fill it in). `.env` is gitignored, so the key cannot be published
-by accident.\
+`.env`, then edit `.env` in your code editor; dot-files are hidden in the
+file browser). `.env` is gitignored, so the key cannot be published by
+accident.\
 """)
 
 code("""\

@@ -626,8 +626,10 @@ the lecture.
 
 1. Sign up at [app.tavily.com](https://app.tavily.com) (free, no card;
    1,000 searches/month is plenty).
-2. Copy the file `.env.example` to `.env` and put your key in it. `.env` is
-   gitignored, so the key stays on your machine.
+2. Copy the file `.env.example` to `.env`, then open `.env` in your code
+   editor and put your key in it. (Dot-files are hidden in Finder and File
+   Explorer, so use your editor or the terminal.) `.env` is gitignored, so
+   the key stays on your machine.
 3. Restart the notebook kernel so `load_dotenv()` picks it up, or just run
    `load_dotenv()` again.\
 """)
