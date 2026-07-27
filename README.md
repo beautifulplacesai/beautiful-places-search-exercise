@@ -33,9 +33,16 @@ uv sync
 needed from Part 4 of the notebook, so you can start without it):
 
 ```bash
-ollama pull gemma4:e4b     # ~10 GB, best answers; needs ~12 GB RAM
-# OR, on a smaller laptop:
-ollama pull gemma4:e2b     # ~3 GB, then set MODEL = "gemma4:e2b" in the notebook
+ollama pull gemma4:e4b     # 10 GB download, ~4 GB of memory when running.
+                           # Good if your laptop has 16 GB of memory.
+# If your laptop has 8 GB of memory, use the smaller model instead:
+ollama pull gemma4:e2b     # then set MODEL = "gemma4:e2b" in the notebook
+```
+
+While the notebooks run, expect them to use 6 to 7 GB of memory in total
+(the LLM, the CLIP model, and Jupyter). Close other heavy apps if your
+laptop feels slow.
+```text
 ```
 
 **4. Tavily key (web-search parts only):** sign up free at
