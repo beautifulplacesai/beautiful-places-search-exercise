@@ -321,8 +321,9 @@ md("""\
 ## Part 3 ⭐⭐: Teach it geography
 
 "Beautiful" is only half of what people ask. The other half is "**near me**".
-The maths for distance on a sphere is called the haversine formula; here it
-is, ready-made:\
+In this notebook "me" means the KCL coordinates we type below; in a real app
+the phone's GPS would supply them. The maths for distance on a sphere is
+called the haversine formula; here it is, ready-made:\
 """)
 
 code("""\
