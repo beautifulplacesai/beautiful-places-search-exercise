@@ -476,29 +476,29 @@ photos["subtype"].value_counts()\
 
 md("""\
 Every photo now has one of 15 categories. And the leaderboard from section 2
-immediately becomes more useful. The most beautiful bridge in London:\
+immediately becomes more useful. A question our data could not even express
+a minute ago: the most beautiful canal in London?\
 """)
 
 code("""\
-leaderboard(photos[photos.subtype == "bridge"], top=5)\
+leaderboard(photos[photos.subtype == "canal"], top=5)\
 """)
 
 code("""\
-top5_bridges = leaderboard(photos[photos.subtype == "bridge"], top=5)
-show_best_photo_of_each(top5_bridges, "The top 5 'bridge' places, best photo of each")\
+top5_canals = leaderboard(photos[photos.subtype == "canal"], top=5)
+show_best_photo_of_each(top5_canals, "The top 5 canals, best photo of each")\
 """)
 
 md("""\
-**Now count the actual bridges.** Gallows Bridge, yes. Morden Hall Park has
-a small white footbridge. But the Pergola is a garden walkway, and two of
-the five are simply pretty rivers. CLIP saw water, arches and railings, and
-guessed "bridge". Section 1's rule again: it judges by looks.
+Look at the photos: five out of five really are canals, narrowboats
+included. Regent's Canal wins.
 
 This technique is called **zero-shot classification**: classifying with no
-training examples, only label sentences. It cost us one matrix multiply, and
-you just measured its real accuracy yourself: useful, and visibly imperfect.
-Good enough for a prototype. In production we do this job with a stronger,
-more expensive model that actually examines each image.
+training examples, only label sentences. It cost us one matrix multiply.
+It is not always this accurate: CLIP judges by looks (section 1's rule),
+and in section 5 you will count its mistakes yourself. Good enough for a
+prototype. In production we do this job with a stronger, more expensive
+model that actually examines each image.
 
 One thing is still missing from our system. Users do not write pandas. They
 ask questions in their own words, in their own language, and they deserve an
@@ -684,8 +684,23 @@ Nothing crashed in either case. The system simply gave a wrong answer, with
 full confidence. This is why real products verify their outputs, and why
 testing matters more than demos.
 
-**Failure 1.** Section 3 gave every photo a category by looks alone. Here
-are the highest-scoring "pubs" in London, according to CLIP:\
+**Failure 1.** Section 3's categories come from looks alone. The canals
+looked perfect. Now ask for the top "bridge" places:\
+""")
+
+code("""\
+top5_bridges = leaderboard(photos[photos.subtype == "bridge"], top=5)
+show_best_photo_of_each(top5_bridges, "The top 5 'bridge' places, best photo of each")\
+""")
+
+md("""\
+**Count the actual bridges.** Gallows Bridge, yes. Morden Hall Park has a
+small white footbridge. But the Pergola is a garden walkway, and two of the
+five are simply pretty rivers. CLIP saw water, arches and railings, and
+guessed "bridge".
+
+Its funniest single mistake: the highest-scoring "pub" in London, according
+to CLIP:\
 """)
 
 code("""\
