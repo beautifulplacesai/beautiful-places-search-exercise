@@ -4,8 +4,9 @@ can open the same notebook and follow along).
 Run: uv run python make_explainer.py
 The .ipynb is build output; this script is the source of truth.
 
-Paced for a ~45 minute live session: every concept is built on screen from
-the smallest possible example, with two audience rounds.
+Paced for a ~45 minute live session. Written for an international audience:
+short sentences, no jargon, every concept built from the smallest example.
+Code cells read line by line; no clever one-liners.
 """
 
 import nbformat as nbf
@@ -28,7 +29,7 @@ md("""\
 ### Building search for Beautiful Places, live, in one notebook
 
 This is the notebook presented in the session. Open it and follow along, run
-what we run. Afterwards, `tryout.ipynb` contains the same stack as exercises
+what we run. Afterwards, `tryout.ipynb` contains the same ideas as exercises
 you build yourself.\
 """)
 
@@ -36,16 +37,15 @@ you build yourself.\
 md("""\
 ## Setup: run this first
 
-One cell downloads and checks everything: the photo metadata and embeddings
-(in the repo), the CLIP model (~340 MB, cached after the first run), and the
-local LLM for section 4 (several GB via Ollama; start this cell early, the
-first three sections work even while the LLM is still downloading).
+This one cell loads everything: the photo data, the CLIP model (~340 MB,
+downloads once), and the local LLM used in section 4 (several GB via Ollama;
+start early, sections 1 to 3 work while it downloads).
 
 Prerequisites (see README): `uv sync` done; [Ollama](https://ollama.com/download)
 installed for section 4; and for the web tool, a free
 [Tavily](https://app.tavily.com) key in a `.env` file (copy `.env.example` to
-`.env` and fill it in). `.env` is gitignored, so the key can never be
-committed or published.\
+`.env` and fill it in). `.env` is gitignored, so the key cannot be published
+by accident.\
 """)
 
 code("""\
@@ -86,7 +86,7 @@ def llm_ready():
         return False
 
 def fetch_image(row):
-    \"\"\"Local cache first, else download from Geograph (CC BY-SA, attribution in data).\"\"\"
+    \"\"\"Local cache first, else download from Geograph (CC BY-SA, credits in data).\"\"\"
     p = CACHE / row["photos"]
     if not p.exists():
         r = _rq.get(row["url"], timeout=20,
@@ -96,7 +96,7 @@ def fetch_image(row):
     return Image.open(p)
 
 def show(rows, title=None, note_col=None):
-    \"\"\"Display a row of photos with name + beauty score captions.\"\"\"
+    \"\"\"Display photos with name + beauty score captions.\"\"\"
     rows = rows.head(6)
     fig, axes = plt.subplots(1, len(rows), figsize=(3.2 * len(rows), 3.4))
     axes = [axes] if len(rows) == 1 else axes
@@ -121,46 +121,55 @@ print(f"{len(photos):,} photos · {photos.name.nunique():,} named places · "
 
 # ================================================================ data
 md("""\
-## The data: London's verified beautiful places
+## The data
 
-≈4,800 photos of ≈4,500 verified, named places in London. Each carries a
-**scenic score (0–10)** from our model, a CNN trained on **200,000+ human
-beauty ratings**. This measured-beauty data is the company's core asset: no
-public model or dataset provides it.\
+4,788 photos of beautiful places in London. Each photo has:
+
+- a **place name** (St James's Park Lake, Tower Bridge, ...)
+- a location (latitude, longitude)
+- a **beauty score from 0 to 10**, given by our own model. That model is a
+  CNN trained on 200,000+ ratings made by real people. Nobody else has this
+  data. It is the company's core asset.\
 """)
 
 code("""\
-show(photos.nlargest(6, "score"), "Highest-scoring photos in the set (scenic model)")\
+show(photos.nlargest(6, "score"), "The highest-scoring photos in the data")\
 """)
 
 # ================================================================ section 1
 md("""\
-## 1 · From pixels to meaning
+## 1 · How can a computer search photos?
 
-None of these photos are tagged. What we have instead: every photo has been
-turned into **512 numbers** by CLIP, an open model trained on 400 million
-image and caption pairs. Look at them:\
+The photos have no tags and no descriptions. So how can we search them?
+
+The answer: every photo has already been converted into a list of
+**512 numbers**. The conversion was done by CLIP, an open model trained on
+400 million pairs of (image, caption). Here is what those numbers look like:\
 """)
 
 code("""\
-print("shape of the photo matrix:", emb.shape)
-print("the first photo, first 12 of its 512 numbers:")
-print(emb[0][:12].round(3))\
+print("we have", emb.shape[0], "photos, each converted to", emb.shape[1], "numbers")
+print()
+print("the first photo's numbers (first 10 of 512):")
+print(emb[0][:10].round(3))\
 """)
 
 md("""\
-Meaningless to us. But treat the 512 numbers as **coordinates: a position on
-a map**. Not a map of London, a map of *meanings*. CLIP arranges it so that
-photos of similar things get nearby positions: swan photos end up in one
-neighbourhood, churches in another.
+The numbers mean nothing to us. But they follow one rule:
 
-The trick that makes search possible: CLIP can also place a **sentence** on
-the same map. Watch, a sentence becomes 512 numbers of exactly the same kind:\
+> **Photos that show similar things get similar numbers.**
+
+Think of each photo's numbers as its **position on a map**. Not a map of
+London. A map of *content*: all lake photos sit close together in one region,
+all skyscrapers sit together in another region, far away.
+
+Here is the trick that makes search possible. CLIP can also convert a
+**sentence** into 512 numbers, a position on the **same map**:\
 """)
 
 code("""\
 def embed_text(texts):
-    \"\"\"One vector per sentence, in the same space as the photo vectors.\"\"\"
+    \"\"\"Convert sentences to positions on the same map as the photos.\"\"\"
     with torch.no_grad():
         toks = clip.tokenize(texts, truncate=True).to(device)
         vecs = model.encode_text(toks)
@@ -168,40 +177,47 @@ def embed_text(texts):
     return vecs.cpu().numpy()
 
 sentence = embed_text(["swans on a lake"])[0]
-print("the sentence, first 12 of its 512 numbers:")
-print(sentence[:12].round(3))\
+print("the sentence 'swans on a lake' (first 10 of its 512 numbers):")
+print(sentence[:10].round(3))\
 """)
 
 md("""\
-Same shape, same map. So the question "how similar is this sentence to this
-photo?" becomes measurable: **how close are their two positions?**
+The sentence "swans on a lake" is now a position on the photo map. Where did
+it land? **Near the photos that show swans on lakes.** That is what CLIP was
+trained to do.
 
-Try it: the sentence's position against three photos' positions. One photo
-really shows swans.\
+Let's check. We measure how close the sentence is to three very different
+photos: a lake with swans, a glass skyscraper, and a quiet street.
+The number is closeness: **bigger means closer**.
+
+Before running: which photo should get the biggest number?\
 """)
 
 code("""\
-swan_photo   = emb[378]     # Wimbledon Common, swans on the water
-church_photo = emb[12]      # St Pancras Old Church
-street_photo = emb[307]     # Well Street Common, no swans
+swan_lake  = emb[378]    # photo of Wimbledon Common: swans on the water
+skyscraper = emb[1247]   # photo of the Gherkin tower, City of London
+street     = emb[3281]   # photo of Ensor Mews: a quiet cobbled street
 
-print("sentence vs swan photo:   ", round(float(sentence @ swan_photo), 3))
-print("sentence vs church photo: ", round(float(sentence @ church_photo), 3))
-print("sentence vs street photo: ", round(float(sentence @ street_photo), 3))
-show(photos.iloc[[378, 12, 307]])\
+print("closeness of each photo to the sentence 'swans on a lake':")
+print("   swan lake photo: ", round(float(swan_lake @ sentence), 3))
+print("   skyscraper photo:", round(float(skyscraper @ sentence), 3))
+print("   street photo:    ", round(float(street @ sentence), 3))
+
+show(photos.iloc[[378, 1247, 3281]])\
 """)
 
 md("""\
-The sentence's position is closest to the photo that means the same thing.
-That is the whole insight. A search engine is now nothing new: measure the
-sentence against **all 4,788 photos at once** and keep the closest six.
-**The entire engine is five lines:**\
+The swan lake wins by a lot (0.32 against 0.11 and 0.14). The sentence landed
+where it should: next to the photo that shows the same thing.
+
+And that is all a search engine is. Measure the sentence's closeness to
+**all 4,788 photos**, and show the six closest:\
 """)
 
 code("""\
 def search(query, k=6):
-    sims = emb @ embed_text([query])[0]          # similarity to every photo
-    hits = photos.iloc[np.argsort(-sims)[:k]].copy()
+    sims = emb @ embed_text([query])[0]                # closeness to every photo
+    hits = photos.iloc[np.argsort(-sims)[:k]].copy()   # the k closest photos
     hits["sim"] = np.sort(sims)[::-1][:k]
     return hits
 
@@ -209,7 +225,8 @@ show(search("swans on a lake"), '"swans on a lake"', note_col="sim")\
 """)
 
 md("""\
-Nobody tagged these photos. The meaning is in the geometry. More:\
+Nobody tagged these photos. The search works through position on the map
+alone. More examples:\
 """)
 
 code("""\
@@ -221,8 +238,8 @@ show(search("autumn trees reflected in a lake"), '"autumn trees reflected in a l
 """)
 
 md("""\
-**Audience: suggest a query.** Descriptions of weather, light, season and
-colour work particularly well.\
+**Audience: suggest a query.** Weather, light, season and colour all work
+well.\
 """)
 
 code("""\
@@ -231,8 +248,7 @@ code("""\
 """)
 
 md("""\
-Before moving on, one question for the room. This query worked a moment ago:
-*"misty park at dawn"*. And this one works too:\
+One more query, and then a question:\
 """)
 
 code("""\
@@ -240,56 +256,62 @@ show(search("cherry blossom in spring"), '"cherry blossom in spring"', note_col=
 """)
 
 md("""\
-**But CLIP has no calendar and no clock. How can it know spring, or dawn?**
+It found spring. **But CLIP has no calendar. How can it know the season?**
 
-It cannot. It sees blossom, soft light, long shadows, and in its 400 million
-training captions those pixels co-occur with the words "spring" and "dawn".
-CLIP **infers from what is visible**, and guesses at everything else. The
-rule for the whole session: if it is in the pixels, CLIP can find it; if it
-must be known, CLIP can only guess.
+It cannot. It sees blossom and soft light in the pixels. In its 400 million
+training captions, those things appear together with the word "spring". So
+the word "spring" and blossom photos sit close together on the map. CLIP is
+**guessing the season from what is visible**, and the guess is usually good.
 
-One more habit to install: the similarity numbers themselves.\
+Remember this rule for the whole session:
+
+> **If it is visible in the pixels, CLIP can find it. If it must be known,
+> CLIP can only guess.**
+
+Last detail: what do the closeness numbers mean? Look at all 4,788 of them
+for one query:\
 """)
 
 code("""\
 sims = emb @ embed_text(["a red brick bridge"])[0]
-print(pd.Series(sims).describe().round(3))\
+print("smallest:", sims.min().round(3))
+print("average: ", sims.mean().round(3))
+print("largest: ", sims.max().round(3))\
 """)
 
 md("""\
-The best match in the whole dataset is only ~0.35, and everything is squashed
-between about 0.1 and 0.35. Normal for CLIP. The numbers mean something only
-**relative to each other**: rank with them, never read them as percentages.\
+Even the best match is only about 0.35. That is normal for CLIP. The numbers
+are not percentages and are not scores out of 1. They only mean something
+**compared to each other**. Use them to rank, nothing else.\
 """)
 
 # ================================================================ section 2
 md("""\
-## 2 · Where similarity search fails
+## 2 · Where search fails
 
 Beautiful Places exists to answer one question: *where is beautiful?*
-Ask the engine we just built.\
+Ask our new search engine:\
 """)
 
 code("""\
 hits = search("the most beautiful park in London")
 show(hits, '"the most beautiful park in London"', note_col="sim")
 
-print(f"mean beauty of these results: {hits.score.mean():.2f}")
-print(f"most beautiful photo in our data: {photos.score.max():.2f}")\
+print("average beauty score of these results:", round(hits.score.mean(), 2))
+print("highest beauty score in our data:     ", round(photos.score.max(), 2))\
 """)
 
 md("""\
-Two things went quietly wrong, and it is worth being precise:
+Nice photos. But look at the two numbers: these results average about **4.9**,
+while our data contains places scoring up to **6.9**. The search engine never
+looked at the beauty scores at all. It cannot. Closeness-on-the-map only
+finds photos that *look like the words* "beautiful park".
 
-1. **Beauty was never consulted.** These photos *resemble the words*
-   "beautiful park". Their measured beauty is mediocre; the scenic scores sat
-   in the metadata, unused. Similarity is not ranking.
-2. **A superlative requires comparison.** "Most beautiful" means examining
-   every park and ordering them, not retrieving lookalikes. And per the rule
-   from section 1: "most beautiful" is not in the pixels of any single photo.
+And remember section 1's rule: "most beautiful" is not visible in the pixels
+of any single photo. To answer it, you must **compare all the parks**, using
+the scores.
 
-The correct answer is already in our own data. Build it in three steps,
-starting with one line:\
+So let's answer it properly, with the scores. First try, one line:\
 """)
 
 code("""\
@@ -297,31 +319,32 @@ photos.nlargest(10, "score")[["name", "score"]]\
 """)
 
 md("""\
-Read the column header: this ranks **photos**. The user asked about
-**places**, and a place is not one photo:\
+This is a top-10 of **photos**. But the user asked for the best **place**,
+and a place is not one photo. Some places appear in our data many times:\
 """)
 
 code("""\
-photos.groupby("name").size().sort_values(ascending=False).head(8)\
+photos_per_place = photos.groupby("name").size()
+photos_per_place.sort_values(ascending=False).head(8)\
 """)
 
 md("""\
-Some places have twenty photos. A place deserves one entry with one combined
-score, which raises a question that is secretly a **product decision**: is a
-place's beauty its **best** photo (`max`) or its **typical** photo (`mean`)?
-
-**Audience: shout it. Max or mean?** (While building this session, `max`
-once crowned a windmill in Croydon as London's most beautiful architecture,
-on the strength of one spectacular photo. Neither answer is wrong.)\
+Up to 20 photos of one place. So: to rank places, first collect each place's
+photos together, then give the place **one combined score**. We take the
+place's **best photo** as its score (`max` in the code). Keep that choice in
+mind; we will question it in a moment.\
 """)
 
 code("""\
 def leaderboard(subset=None, top=10):
     d = photos if subset is None else subset
-    return (d.groupby("name")
-             .agg(beauty=("score", "max"), photos_n=("photos", "count"),
-                  lat=("latitude", "first"), lon=("longitude", "first"))
-             .nlargest(top, "beauty"))
+    grouped = d.groupby("name").agg(
+        beauty=("score", "max"),        # a place scores as its BEST photo
+        photos_n=("photos", "count"),   # how many photos it has
+        lat=("latitude", "first"),
+        lon=("longitude", "first"),
+    )
+    return grouped.nlargest(top, "beauty")
 
 leaderboard(photos[photos.category == "nature"])\
 """)
@@ -332,36 +355,69 @@ show(photos[photos.name == winner].nlargest(3, "score"), f"Our data's answer: {w
 """)
 
 md("""\
-A name, a score, evidence photos. *That* is an answer, powered by the one
-thing only Beautiful Places has: measured beauty.\
+A name, a score, photos as evidence. This is a real answer, and only our
+data can give it.
+
+Now the promised question about that `max`. Run the same leaderboard for
+architecture:\
+""")
+
+code("""\
+leaderboard(photos[photos.category == "architecture"], top=5)\
+""")
+
+md("""\
+**Number one is a windmill in Croydon.** One spectacular photo put it above
+every famous building in London.
+
+Is that right or wrong? With `max`, one great photo can crown a place. With
+`mean` (the average), places with many normal photos get pulled down. Neither
+is mathematically wrong. It is a **product decision**, and it changes what
+users see.
+
+**Audience: keep the windmill at number one, or demote it?**\
 """)
 
 # ================================================================ section 3
 md("""\
-## 3 · Enriching the data with zero-shot classification
+## 3 · Creating new categories from the map
 
-A limitation one level down: our data only distinguishes `nature` from
-`architecture`. Ask for "the most beautiful *bridge*" and it cannot even
-filter to bridges.
+Our data has only two categories: `nature` and `architecture`. If a user
+asks for the most beautiful **bridge**, we are stuck: nothing in the data
+says which photos show bridges.
 
-The embeddings fix this too. Watch the mechanism on **one photo and three
-candidate labels**:\
+But we can create that information ourselves, with the map from section 1.
+The idea, on one photo:
+
+1. Write each possible category as a sentence: "a photo of a bridge",
+   "a photo of a park", "a photo of a church".
+2. Put those three sentences on the map, like we did with the search query.
+3. Check which sentence the photo sits **closest** to. That is its category.\
 """)
 
 code("""\
-labels = ["a photo of a bridge", "a photo of a park", "a photo of a church"]
-label_vecs = embed_text(labels)
+bridge_label = embed_text(["a photo of a bridge"])[0]
+park_label   = embed_text(["a photo of a park"])[0]
+church_label = embed_text(["a photo of a church"])[0]
 
-print(photos.iloc[42]["name"])
-for lab, s in zip(labels, emb[42] @ label_vecs.T):
-    print(f"  {s:.3f}  {lab}")
+one_photo = emb[42]                     # a photo we have not looked at yet
+
+print("closeness of this photo to each label:")
+print("   'a photo of a bridge':", round(float(one_photo @ bridge_label), 3))
+print("   'a photo of a park':  ", round(float(one_photo @ park_label), 3))
+print("   'a photo of a church':", round(float(one_photo @ church_label), 3))
+
 show(photos.iloc[[42]])\
 """)
 
 md("""\
-The photo sits closest to one label sentence. Pick the closest and you have
-classified the photo, **with no training data and no new model**. This is
-called zero-shot classification. Now all 4,800 photos at once:\
+The photo is closest to "a photo of a park", and it is indeed a park
+(Priory Gardens). We just gave a photo a category **without training
+anything**.
+
+Now the same for all 4,788 photos, with 15 categories. Three steps in the
+code: put all 15 label sentences on the map, measure every photo against
+every label, and give each photo the label it sits closest to.\
 """)
 
 code("""\
@@ -382,9 +438,18 @@ LABELS = {
     "cemetery":  "a photo of an old cemetery with gravestones",
     "modern":    "a photo of modern glass architecture or skyscrapers",
 }
-label_vecs = embed_text(list(LABELS.values()))
-photos["subtype"] = np.array(list(LABELS))[(emb @ label_vecs.T).argmax(1)]
+
+label_positions = embed_text(list(LABELS.values()))   # 15 positions on the map
+closeness = emb @ label_positions.T                   # every photo vs every label
+winner = closeness.argmax(axis=1)                     # per photo: closest label
+
+photos["subtype"] = np.array(list(LABELS))[winner]
 photos["subtype"].value_counts()\
+""")
+
+md("""\
+Every photo now has one of 15 categories. And the leaderboard from section 2
+immediately becomes more useful. The most beautiful bridge in London:\
 """)
 
 code("""\
@@ -392,71 +457,75 @@ leaderboard(photos[photos.subtype == "bridge"], top=5)\
 """)
 
 md("""\
-The data can now answer "most beautiful bridge / canal / cemetery": fifteen
-question types it could not express a minute ago, at essentially zero cost.
+This technique is called **zero-shot classification**: classifying with no
+training examples, only label sentences. It cost us one matrix multiply.
 
-**The limitation, stated plainly:** zero-shot labels are noisy. CLIP
-classifies by appearance (section 1's rule again), so a round timber-framed
-theatre gets labelled "pub", and a park photo with a footbridge in frame
-becomes a "bridge". Good enough for a prototype and for today. **The
-reliable approach, what we run in production, is a multimodal LLM that
-examines every image**, or a classifier trained on labelled examples. That
-costs roughly a thousand times more compute than one matrix multiply.
-Choosing the right point on that cost and reliability curve is a core
-engineering decision.
+Be honest about its quality: CLIP judges by looks (section 1's rule), so
+some labels are wrong. You will see a funny example in section 5. Good
+enough for a prototype. In production we do this job with a stronger, more
+expensive model that actually examines each image.
 
-One gap remains: users don't query databases in pandas. They ask in English,
-and a good answer includes *why* it is the answer.\
+One thing is still missing from our system. Users do not write pandas. They
+ask questions in English, and they deserve an answer with a **reason**.\
 """)
 
 # ================================================================ section 4
 md("""\
 ## 4 · An LLM that uses our tools
 
-We build this in steps, because each step answers a question the previous
-one raises.
+We build this in small steps.
 
-**Step 1: the model alone.** An open-source LLM (Gemma 4 E4B, 4.5 B
-parameters, running locally on this laptop). No tools, no data. Just ask.\
+**Step 1: the LLM alone.** An open model (Gemma 4), running on this laptop.
+No tools, no access to our data. Just the question:\
 """)
 
 code("""\
 from langchain_ollama import ChatOllama
 
 llm = ChatOllama(model=MODEL, temperature=0)
-print(llm.invoke("What is the most beautiful park in London? Answer in two sentences.").content)\
+answer = llm.invoke("What is the most beautiful park in London? Answer in two sentences.")
+print(answer.content)\
 """)
 
 md("""\
-A confident answer, and it owes nothing to our measurements: the model is
-remembering the internet. The same famous spots Google would give you. This
-is exactly the problem the app exists to fix.
+A confident answer, naming famous parks. The model is remembering what the
+internet says, exactly like Google. Our measurements played no part. This is
+the "same famous spots" problem our app exists to fix.
 
-**Step 2: show it our data, by hand.**\
+**Step 2: give it our data, by hand.** Paste the leaderboard into the
+question:\
 """)
 
 code("""\
 top10 = leaderboard(photos[photos.category == "nature"]).to_string()
+
 question = f\"\"\"Here are our measured beauty scores for London nature spots:
 
 {top10}
 
-Based on this data, what is the most beautiful park in London? Two sentences.\"\"\"
-print(llm.invoke(question).content)\
+Based on this data only: what is the most beautiful park in London? Two sentences.\"\"\"
+
+answer = llm.invoke(question)
+print(answer.content)\
 """)
 
 md("""\
-Now it is grounded in our data. Model plus proprietary data beats model
-alone: the core idea behind most serious AI products.
+Now the answer uses **our data**. This is the big idea: *a model plus data it
+never had*. But pasting data by hand does not scale. We would need to know,
+for every question, which data to paste.
 
-But pasting data into every question does not scale, and we had to know in
-advance which data the question would need. What if the model could fetch
-data itself, when it decides it needs it?
+Better: let the model **fetch data itself**, when it decides it needs it.
 
-**Step 3: tools.** A tool is a Python function with a good docstring. The
-docstring is how the model decides when to call it: write it for the model.
-We give it three, wrapping everything built this session, plus **Tavily**,
-the same web search the production pipeline's judge uses.\
+**Step 3: tools.** A tool is a normal Python function that the model is
+allowed to call. The model reads the function's description text (the
+"docstring") to decide when to use it. We wrap what we built today into
+three tools:
+
+| tool | what it wraps | from |
+|---|---|---|
+| `search_photos` | closeness search | section 1 |
+| `beauty_db` | the leaderboard, with categories | sections 2 and 3 |
+| `web_search` | live web search (Tavily, same as our pipeline) | new |\
 """)
 
 code("""\
@@ -490,11 +559,13 @@ def web_search(query: str) -> list:
 """)
 
 md("""\
-**Step 4: the agent.** The model reads the question and *decides which tools
-to call*. There is no routing if-statement anywhere in this code. The system
-prompt sets the rules of engagement, including the one that took us longest
-to learn: the database's answer is final, even when it is not famous. Hidden
-gems are the product.\
+**Step 4: the agent.** Connect the model and the tools. The model reads each
+question and **chooses which tool to call**. We wrote no rules for choosing.
+
+The instructions below (the "system prompt") set its behaviour. One rule took
+us longest to learn, so read it in full: *the database's answer is final,
+even when it is not famous*. Without it, the model sometimes ignored our data
+and answered "Tower Bridge" from memory, with an invented score.\
 """)
 
 code("""\
@@ -516,6 +587,7 @@ Always answer with:
 agent = create_agent(llm, [search_photos, beauty_db, web_search], system_prompt=SYSTEM)
 
 def ask(question):
+    \"\"\"Send a question to the agent. Print which tools it calls, then its answer.\"\"\"
     for step in agent.stream({"messages": [("user", question)]}, stream_mode="values"):
         m = step["messages"][-1]
         if m.type == "ai" and getattr(m, "tool_calls", None):
@@ -528,11 +600,11 @@ ask("What is the most beautiful park in London?")\
 """)
 
 md("""\
-Compare with Step 1: same question, same model, and now a measured answer
-with a reason. Watch the trace line: the model chose the tool by itself.
+Compare with Step 1: the same model, the same question. Now it calls our
+database by itself and answers with a measured score and a reason.
 
-**One system, several question types.** No search code changes between the
-next three questions; the model routes:\
+Two more questions. Notice: we change no code between them. The model
+**routes** each question to the right tools.\
 """)
 
 code("""\
@@ -540,8 +612,8 @@ ask("What is the most beautiful bridge in London?")\
 """)
 
 md("""\
-Not a landmark: a small footbridge in a Morden park. Measured beauty
-surfacing what postcards miss is precisely the product.\
+Not a famous landmark: a small footbridge in a Morden park. Finding beautiful
+places that fame forgot is exactly what the product is for.\
 """)
 
 code("""\
@@ -549,12 +621,12 @@ ask("What's the most beautiful garden in London, and is it free to get in?")\
 """)
 
 md("""\
-Read the trace: it **chained**. First the database (which garden), then the
-web (is it free). Different tools for different halves of one question.
+Look at the tool calls above: the model **chained** two tools. First our
+database (which garden is most beautiful), then the web (is it free). Two
+different halves of one question, answered from two different sources.
 
 **Audience: ask the system a question.** Anything a person looking for a
-beautiful place would ask. Watch which tools it selects, and judge whether
-the stated reasoning follows from the tool results.\
+beautiful place would ask. Watch which tools it picks.\
 """)
 
 code("""\
@@ -564,69 +636,61 @@ code("""\
 
 # ================================================================ section 5
 md("""\
-## 5 · Failure cases worth remembering
+## 5 · When it goes wrong
 
-Real outputs from building this notebook. Nothing crashes when these happen:
-the system simply returns something wrong, with confidence. This is why
-production systems verify, and why evaluation matters more than demos.\
+Everything above worked. Now two real failures from building this notebook.
+Nothing crashed in either case. The system simply gave a wrong answer, with
+full confidence. This is why real products verify their outputs, and why
+testing matters more than demos.
+
+**Failure 1.** Section 3 gave every photo a category by looks alone. Here
+are the highest-scoring "pubs" in London, according to CLIP:\
 """)
 
 code("""\
-# Zero-shot classification error: the highest-scoring "pub" in London,
-# according to CLIP, is Shakespeare's Globe, a round, timber-framed theatre.
-# Classification by appearance alone confuses visually similar categories.
-show(photos[photos.subtype == "pub"].nlargest(3, "score"), "CLIP's highest-scoring 'pubs'")\
-""")
-
-code("""\
-# Ranking design error: with max aggregation, the answer to "most beautiful
-# architecture in London" was once Shirley Windmill: one exceptional photo
-# outranked every photo of every famous building. Whether a place is ranked
-# by its best photo or its average is a product decision with visible
-# consequences.
-show(photos[photos.subtype == "windmill"].nlargest(3, "score"), "The windmill that outranked the cathedrals")\
+show(photos[photos.subtype == "pub"].nlargest(3, "score"), "CLIP's top 'pubs'")\
 """)
 
 md("""\
-What connects them: pixels carry *appearance*, not *facts*, and aggregate
-statistics encode *design choices*, not truths.
+Number one is **Shakespeare's Globe**: a theatre. It is round, timber-framed
+and old-looking, so on the map of looks it sits near the pubs. Categories by
+appearance fail exactly where appearance misleads.
 
-### How this is actually solved when it matters
+**Failure 2.** You met it already: with `max` scoring, one spectacular photo
+made a windmill the most beautiful architecture in London. The maths did
+what we asked. Whether it is what users need is a product judgement.\
+""")
 
-When you genuinely need structured data attached to images or places, not
-for a demo but to publish, the standard tooling has shifted generation by
-generation:
+code("""\
+show(photos[photos.subtype == "windmill"].nlargest(3, "score"), "The windmill that outranks cathedrals")\
+""")
 
-- **Supervised classifiers (the standard until ~2022).** One model per
-  attribute, trained on thousands of hand-labelled examples. Our scenic
-  model is this generation: a CNN trained on 200,000+ human beauty ratings.
-  Reliable within a fixed taxonomy; but every new attribute means a new
-  labelling effort and a new model.
-- **Zero-shot embeddings (section 3).** Instant and taxonomy-free, but it
-  classifies by appearance. In practice this tier is used for prototyping,
-  search, deduplication and *pre-filtering*, not for facts you would
-  publish.
-- **Multimodal LLMs under careful guidance (the current standard, and what
-  our pipeline runs).** A vision LLM examines each image and must return a
-  structured JSON record against a schema, with domain rules encoded in the
-  prompt. Its confidence routes every result: high-confidence accepted
-  automatically, uncertain cases escalated to web research, the rest to
-  human review. The "careful guidance" is the engineering: output schemas,
-  calibrated thresholds, and code-side enforcement. A prompt is a wish; the
-  checks live in code.
-- **Distillation closes the loop.** Once the LLM has labelled enough data
-  well, you train a small, cheap classifier on its outputs, recovering
-  tier-one economics at scale, with tier-three quality supervision.
+md("""\
+What both failures share: **pixels carry appearance, not facts**, and
+**statistics follow the rules we chose, not the truth**.
 
-Each tier costs orders of magnitude more per image than the one before, so
-real systems are funnels: cheap methods handle the volume so that expensive
-models, and humans, only ever see the hard cases.
+### How this is done for real
 
-Your notebook, `tryout.ipynb`, contains this exact stack as exercises: you
-will build the leaderboard yourselves, design your own classification
-labels, add a geographic tool, and make the agent explain itself better than
-this one does. The TA has hints. We would genuinely like to see your best
-results, and your most instructive failures.\
+When correct labels really matter, this is the ladder companies climb. Each
+step costs roughly a thousand times more per image than the one before:
+
+1. **Trained classifiers.** One model per category, trained on thousands of
+   hand-labelled examples. Reliable, but every new category needs new
+   labelled data. Our beauty model is this kind.
+2. **Zero-shot labels** (what we did in section 3). Instant and free, but
+   judges by looks. Used for prototypes, search and pre-filtering.
+3. **A large vision model that examines every image** (what our production
+   pipeline does). It must answer in a fixed format, its confidence is
+   checked, uncertain cases go to web research, and the rest go to a human.
+4. **Humans** review what the machines are unsure about.
+
+Cheap methods handle the millions; expensive methods and people see only the
+hard cases. You saw this same funnel in the lecture.
+
+Your notebook, `tryout.ipynb`, has everything from today as exercises: you
+will build the leaderboard yourself, invent your own categories, give the
+agent a geography tool, and write a better system prompt than ours. The TA
+has hints. We would love to see your best answers, and your best failures.\
 """)
 
 nb["cells"] = cells
