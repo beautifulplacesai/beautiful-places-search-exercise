@@ -39,7 +39,7 @@ solutions, but ask for a hint first: that's where the learning is).
 | 7 | live web knowledge | ⭐⭐⭐ |
 | 8 | advanced extensions (pick one) | ⭐⭐⭐⭐ |
 
-**The data:** ≈5,000 photos of ≈4,700 verified beautiful places in London,
+**The data:** ≈4,800 photos of ≈4,500 verified beautiful places in London,
 each with a scenic score (0–10) from Beautiful Places' model, a CNN trained on
 200,000+ human beauty ratings. Photos © Geograph contributors (CC BY-SA),
 loaded on demand from geograph.org.uk.
@@ -363,7 +363,9 @@ search tool you saw inside the production pipeline in the lecture.
 1. Go to **[app.tavily.com](https://app.tavily.com)** and sign up (free, no card
    needed; the free tier gives 1,000 searches/month, plenty for today).
 2. Copy the API key from your dashboard (starts with `tvly-`).
-3. Paste it below. Keep it yours, don't commit it or share it.
+3. Copy the file `.env.example` to `.env` and put your key in it. `.env` is
+   in `.gitignore`, so the key stays on your machine and can never be
+   committed or shared by accident.
 
 Then ask something no offline dataset can answer:
 
@@ -374,7 +376,11 @@ yours doesn't, whose fault is it: the model's, or your docstrings'?\
 """)
 
 code("""\
-TAVILY_KEY = "paste-your-key-here"   # from app.tavily.com, yours, free
+import os
+from dotenv import load_dotenv
+load_dotenv()                        # reads the gitignored .env file
+TAVILY_KEY = os.environ.get("TAVILY_API_KEY", "")
+assert TAVILY_KEY, "Copy .env.example to .env and add your key from app.tavily.com"
 
 @tool
 def web_search(query: str) -> list:

@@ -10,14 +10,11 @@ import nbformat as nbf
 nb = nbf.v4.new_notebook()
 cells = []
 
-
 def md(text):
     cells.append(nbf.v4.new_markdown_cell(text))
 
-
 def code(src):
     cells.append(nbf.v4.new_code_cell(src))
-
 
 # ---------------------------------------------------------------- title
 md("""\
@@ -27,11 +24,6 @@ md("""\
 This is the notebook presented in the session. Open it and follow along, run
 what we run. Afterwards, `tryout.ipynb` contains the same stack as exercises
 you build yourself.
-
-> **Speaker notes (session ≈ 45 min):** The lecture covered what Beautiful
-> Places is. This session builds the product's missing feature, search, from
-> first principles, and examines where each technique works and where it fails.
-> Two audience-participation points are marked.\
 """)
 
 # ---------------------------------------------------------------- setup
@@ -44,8 +36,10 @@ local LLM for section 4 (several GB via Ollama; start this cell early; sections
 1–3 work even while the LLM is still downloading).
 
 Prerequisites (see README): `uv sync` done; [Ollama](https://ollama.com/download)
-installed for section 4; a free [Tavily](https://app.tavily.com) key in the
-`TAVILY_API_KEY` environment variable if you want the web tool.\
+installed for section 4; and for the web tool, a free
+[Tavily](https://app.tavily.com) key in a `.env` file (copy `.env.example` to
+`.env` and fill it in). `.env` is gitignored, so the key can never be
+committed or published.\
 """)
 
 code("""\
@@ -67,7 +61,9 @@ device = ("mps" if torch.backends.mps.is_available()
 model, _ = clip.load("ViT-B/32", device=device)     # same model our pipeline uses
 
 MODEL = "gemma4:e4b"            # section 4 LLM; use "gemma4:e2b" on a low-RAM laptop
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")   # free key: app.tavily.com
+from dotenv import load_dotenv
+load_dotenv()                                       # reads the gitignored .env file
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 
 def llm_ready():
     \"\"\"Check Ollama is running and MODEL is present; pull it if missing.\"\"\"
@@ -120,14 +116,10 @@ print(f"{len(photos):,} photos · {photos.name.nunique():,} named places · "
 md("""\
 ## The data: London's verified beautiful places
 
-≈5,000 photos of ≈4,700 verified, named places in London. Each carries a
+≈4,800 photos of ≈4,500 verified, named places in London. Each carries a
 **scenic score (0–10)** from our model, a CNN trained on **200,000+ human
 beauty ratings**. This measured-beauty data is
 the company's core asset: no public model or dataset provides it.
-
-> **Speaker notes:** Make the provenance concrete in one line (Geograph photos,
-> CC-licensed, GPS-tagged, verified through our pipeline) and stress that the
-> scores come from a trained vision model, not an LLM's opinion.\
 """)
 
 code("""\
@@ -144,10 +136,6 @@ million image–caption pairs, maps **images and sentences into the same
 end up close together. Our photos are already in that space (the `emb` matrix,
 precomputed). Searching is then just geometry: embed the query sentence, and
 rank every photo by cosine similarity.
-
-> **Speaker notes:** One mental model to draw: a cloud of points (the photos); a
-> query becomes a new point; search is nearest-neighbour lookup. No keywords, no
-> tags, no index: the meaning is in the geometry.\
 """)
 
 code("""\
@@ -171,10 +159,6 @@ show(search("cherry blossom in spring"), '"cherry blossom in spring"', note_col=
 md("""\
 **Audience: suggest a query.** Descriptions of weather, light, season, and
 colour work particularly well: the model is matching *visual* content.
-
-> **Speaker notes:** Take two or three suggestions and type them live. This is
-> where confidence in embeddings should peak. Then the pivot: "So is search
-> solved? Let's ask the question this company exists to answer."\
 """)
 
 code("""\
@@ -209,9 +193,6 @@ Two distinct failures, and it's worth being precise about them:
    park and ordering them, not retrieving lookalikes. More generally, properties
    like "hidden", "peaceful", or "quiet" are facts about places, not patterns of
    pixels; no visual embedding can rank by them.
-
-> **Speaker notes:** This is the central technical point of the session:
-> *similarity ≠ ranking; retrieval ≠ answering.* Give it a beat.
 
 The correct answer is already in our own data. It takes five lines:\
 """)
@@ -291,10 +272,6 @@ classifier trained on labelled examples. That costs roughly a thousand times
 more compute than one matrix multiply. Choosing the right point on that
 cost–reliability curve is a core engineering decision, not a detail.
 
-> **Speaker notes:** This is the honest-limitations moment for classification
-> present the trade-off (instant but noisy vs. expensive but reliable) as the
-> lesson itself. Concrete failure examples are shown at the end of the session.
-
 One gap remains: users don't query databases in pandas. They ask in English, and
 a good answer includes *why* it's the answer.\
 """)
@@ -317,11 +294,6 @@ web tool is **Tavily**, the same search tool the pipeline's judge uses.
 The model reads the question and *decides which tools to call*. There is no
 routing if-statement anywhere in this code, that decision, and the explanation
 the model gives, is what the LLM contributes.
-
-> **Speaker notes:** This is the tool-use / agent pattern that underlies most
-> current AI products, shown in three cells. Point at the tool-call trace as it
-> streams. Note that the system prompt *requires* a WHY, an answer without
-> grounding is exactly the failure from section 2 in different clothes.\
 """)
 
 code("""\
@@ -394,13 +366,6 @@ The beauty score is no longer a column in a CSV, it's a tool the model reaches
 for; the embeddings enriched the database so that tool understands *kinds* of
 places. The same system now handles question types that pure similarity search,
 or a pure LLM, would each fail at alone:
-
-> **Speaker notes:** Run both. Name what routes where as each streams:
-> measurement with the new subtypes; then measurement plus live web facts. Worth
-> saying explicitly: no search code changed between these questions, the model
-> selects the strategy. On the bridge answer: it's a small footbridge in Morden
-> Hall Park, not a landmark, measured beauty surfacing what postcards miss is
-> precisely the product.\
 """)
 
 code("""\
@@ -425,12 +390,6 @@ code("""\
 # ---------------------------------------------------------------- failure cases
 md("""\
 ## 5 · Failure cases worth remembering
-
-> **Speaker notes (~3 min):** Close on honest limitations, these are real
-> outputs from building this notebook. The underlying point: these errors are
-> *silent*. Nothing crashes; the system simply returns something wrong with
-> full confidence. That is why production systems verify with stronger models
-> and human review, and why evaluation matters more than demos.\
 """)
 
 code("""\
@@ -481,18 +440,6 @@ demo, but to publish, the standard tooling has shifted generation by generation:
 Each tier costs orders of magnitude more per image than the one before, so real
 systems are funnels: cheap methods handle the volume so that expensive models
 and humans, only ever see the hard cases.
-
-> **Speaker notes:** This list is the session's "what would I actually use"
-> takeaway, worth slowing down for. It is also literally our pipeline: Gemma
-> vision captioning into JSON, confidence-thresholded escalation, web research,
-> human review before anything is published.
-
-> **Speaker notes, handover (last 2 min):** "Your notebook, `tryout.ipynb`,
-> contains this exact stack as a sequence of exercises: you'll build the
-> leaderboard yourselves, design your own classification labels, add a
-> geographic tool, and improve the agent's reasoning. The TA has hints and can
-> discuss any part in depth. I'd genuinely like to see your best results, and
-> your most instructive failures."\
 """)
 
 nb["cells"] = cells
