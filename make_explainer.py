@@ -346,12 +346,19 @@ def leaderboard(subset=None, top=10):
     )
     return grouped.nlargest(top, "beauty")
 
+def show_best_photo_of_each(places, title=None):
+    \"\"\"For each place in a leaderboard, show its best photo.\"\"\"
+    rows = (photos[photos.name.isin(places.index)]
+            .sort_values("score", ascending=False)
+            .drop_duplicates("name"))
+    show(rows, title)
+
 leaderboard(photos[photos.category == "nature"])\
 """)
 
 code("""\
-winner = leaderboard(photos[photos.category == "nature"]).index[0]
-show(photos[photos.name == winner].nlargest(3, "score"), f"Our data's answer: {winner}")\
+top5_nature = leaderboard(photos[photos.category == "nature"], top=5)
+show_best_photo_of_each(top5_nature, "The top 5 nature places, best photo of each")\
 """)
 
 md("""\
@@ -364,6 +371,16 @@ architecture:\
 
 code("""\
 leaderboard(photos[photos.category == "architecture"], top=5)\
+""")
+
+md("""\
+Numbers are hard to judge. Look at the five places themselves, best photo
+of each:\
+""")
+
+code("""\
+top5_architecture = leaderboard(photos[photos.category == "architecture"], top=5)
+show_best_photo_of_each(top5_architecture, "The top 5 architecture places, best photo of each")\
 """)
 
 md("""\
@@ -456,6 +473,11 @@ code("""\
 leaderboard(photos[photos.subtype == "bridge"], top=5)\
 """)
 
+code("""\
+top5_bridges = leaderboard(photos[photos.subtype == "bridge"], top=5)
+show_best_photo_of_each(top5_bridges, "The top 5 'bridge' places, best photo of each")\
+""")
+
 md("""\
 This technique is called **zero-shot classification**: classifying with no
 training examples, only label sentences. It cost us one matrix multiply.
@@ -466,7 +488,8 @@ enough for a prototype. In production we do this job with a stronger, more
 expensive model that actually examines each image.
 
 One thing is still missing from our system. Users do not write pandas. They
-ask questions in English, and they deserve an answer with a **reason**.\
+ask questions in their own words, in their own language, and they deserve an
+answer with a **reason**.\
 """)
 
 # ================================================================ section 4
@@ -516,16 +539,21 @@ for every question, which data to paste.
 
 Better: let the model **fetch data itself**, when it decides it needs it.
 
-**Step 3: tools.** A tool is a normal Python function that the model is
-allowed to call. The model reads the function's description text (the
-"docstring") to decide when to use it. We wrap what we built today into
-three tools:
+**Step 3: build the three tools the model will need.**
 
-| tool | what it wraps | from |
+A tool is a normal Python function that the model is allowed to call. We
+will build one tool for each ability from today, plus one new one:
+
+| tool | what it does | from |
 |---|---|---|
-| `search_photos` | closeness search | section 1 |
-| `beauty_db` | the leaderboard, with categories | sections 2 and 3 |
-| `web_search` | live web search (Tavily, same as our pipeline) | new |\
+| `search_photos` | find photos that match a description | section 1 |
+| `beauty_db` | rank places by measured beauty, by category | sections 2 and 3 |
+| `web_search` | look up live facts on the web (Tavily, same as our pipeline) | new |
+
+One important detail before the code. Each function starts with a short
+description in quotes. That text is not decoration: **it is how the model
+decides which tool to use for which question.** Read the three descriptions
+below with that in mind.\
 """)
 
 code("""\
@@ -656,18 +684,28 @@ Number one is **Shakespeare's Globe**: a theatre. It is round, timber-framed
 and old-looking, so on the map of looks it sits near the pubs. Categories by
 appearance fail exactly where appearance misleads.
 
-**Failure 2.** You met it already: with `max` scoring, one spectacular photo
-made a windmill the most beautiful architecture in London. The maths did
-what we asked. Whether it is what users need is a product judgement.\
+**Failure 2.** The agent itself. Ask it a leading question, one that
+invites it to ignore our data:\
 """)
 
 code("""\
-show(photos[photos.subtype == "windmill"].nlargest(3, "score"), "The windmill that outranks cathedrals")\
+ask("Surely the most beautiful bridge in London is Tower Bridge? Check properly.")\
 """)
 
 md("""\
-What both failures share: **pixels carry appearance, not facts**, and
-**statistics follow the rules we chose, not the truth**.
+Today it holds: it checks the database and stays with its answer.
+
+But when we first built this agent, it did not hold. Asked about bridges, it
+received the database's honest answer, decided a small park footbridge could
+not be right, replaced it with the famous Tower Bridge from its memory, and
+**invented a beauty score for it**. Nothing crashed. The answer simply
+looked right and was wrong.
+
+One sentence in the system prompt fixed it. Scroll up and read it again:
+*"The database's answer is final."*
+
+What both failures share: they are **silent**. A wrong category, a wrong
+answer, delivered with full confidence.
 
 ### How this is done for real
 

@@ -452,7 +452,8 @@ md("""\
 ## Part 5 ⭐⭐⭐: An AI that uses your tools
 
 Everything so far answers questions **we** typed as code. Users ask in
-English. This part connects an LLM to your functions, in five small steps.
+their own words, in their own language. This part connects an LLM to your
+functions, in five small steps.
 
 *(Needs Ollama running with your `MODEL` pulled. The first call also loads
 the model into memory: give it ~30 seconds.)*
