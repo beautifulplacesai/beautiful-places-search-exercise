@@ -154,8 +154,9 @@ move on.\
 md("""\
 ## Part 1 ⭐: What does CLIP actually see?
 
-CLIP puts photos and sentences into the same space, where near means "means
-the same". But CLIP only ever sees **pixels**. So what exactly can a query
+In the demo we pictured CLIP's numbers as positions on a **map of content**:
+photos and sentences land on the same map, and near means "means the same".
+But CLIP only ever sees **pixels**. So what exactly can a query
 mention and still work? Let's find its limits, from easy to strange.
 
 First, **things you can point at**:\
@@ -194,8 +195,8 @@ light**, and in its 400 million training captions those pixels co-occur with
 the word "spring". CLIP **infers the season from what is visible**. It is a
 guess, and usually a good one.
 
-This is the rule worth remembering all morning: CLIP can find anything that
-is **in the pixels**, and it silently guesses at everything else.
+This is the demo's rule, worth repeating: **if it is visible in the pixels,
+CLIP can find it. If it must be known, CLIP can only guess.**
 
 **Do:** probe the boundary. Try queries like these, and your own:
 
@@ -282,10 +283,10 @@ md("""\
 Some places have up to twenty photos. So a place deserves **one entry** with
 **one combined score**, and that raises a question that is secretly a
 **product decision**: is a place's beauty its **best** photo (`max`) or its
-**typical** photo (`mean`)? While building this session, `max` once crowned a windmill in
-Croydon as London's most beautiful architecture, on the strength of one
-spectacular photo. Neither choice is wrong. You choose, and you own the
-consequences.
+**typical** photo (`mean`)? You saw this live in the demo: `max` crowned a
+windmill in Croydon as London's most beautiful architecture, on the strength
+of one spectacular photo. Neither choice is wrong. You choose, and you own
+the consequences.
 
 **Do:** write `leaderboard(category=None, top=10)`:
 
