@@ -120,10 +120,9 @@ print(f"{len(photos):,} photos · {photos.name.nunique():,} named places · "
 md("""\
 ## The data: London's verified beautiful places
 
-≈5,000 photos of ≈4,700 verified, named places in London. Every photo is
-attached to a named place. Some were verified automatically on strong evidence,
-the rest by a human. Each carries a **scenic score (0–10)** from our model, a
-CNN trained on **200,000+ human beauty ratings**. This measured-beauty data is
+≈5,000 photos of ≈4,700 verified, named places in London. Each carries a
+**scenic score (0–10)** from our model, a CNN trained on **200,000+ human
+beauty ratings**. This measured-beauty data is
 the company's core asset: no public model or dataset provides it.
 
 > **Speaker notes:** Make the provenance concrete in one line (Geograph photos,

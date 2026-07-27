@@ -39,9 +39,8 @@ solutions, but ask for a hint first: that's where the learning is).
 | 7 | live web knowledge | ⭐⭐⭐ |
 | 8 | advanced extensions (pick one) | ⭐⭐⭐⭐ |
 
-**The data:** ≈5,000 photos of ≈4,700 verified beautiful places in London
-(some verified automatically on strong evidence, the rest by a human), each
-with a scenic score (0–10) from Beautiful Places' model, a CNN trained on
+**The data:** ≈5,000 photos of ≈4,700 verified beautiful places in London,
+each with a scenic score (0–10) from Beautiful Places' model, a CNN trained on
 200,000+ human beauty ratings. Photos © Geograph contributors (CC BY-SA),
 loaded on demand from geograph.org.uk.
 
