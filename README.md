@@ -21,6 +21,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+**Then open a new terminal window.** Freshly installed commands (`uv`,
+`ollama`) are not found in terminals that were already open.
+
 **2. Clone and install** (grabs Python deps incl. PyTorch, a few minutes):
 
 ```bash
@@ -47,10 +50,13 @@ laptop feels slow.
 [app.tavily.com](https://app.tavily.com) (no card; 1,000 searches/month), then:
 
 ```bash
-cp .env.example .env    # then open .env and paste your key in
+cp .env.example .env
 ```
 
-`.env` is gitignored, so the key stays on your machine.
+Then open the `.env` file **in your code editor** and paste your key in.
+(File names starting with a dot are hidden in Finder and File Explorer, so
+use your editor or the terminal, not the file browser.) `.env` is
+gitignored, so the key stays on your machine.
 
 ## Run
 
