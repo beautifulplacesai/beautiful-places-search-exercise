@@ -35,9 +35,15 @@ uv sync
 **3. Install [Ollama](https://ollama.com/download)** (runs the LLM locally
 needed from Part 4 of the notebook, so you can start without it):
 
+Install it, **open the Ollama app so it is running**, then in a terminal:
+
 ```bash
 ollama pull granite4:3b    # 2 GB download, runs on any laptop
+ollama list                # should now list granite4:3b
 ```
+
+`ollama list` is the check: if it replies with the model, section 4 will work.
+If the command is not found, open a new terminal window.
 
 While the notebooks run, expect them to use 4 to 5 GB of memory in total
 (the LLM, the CLIP model, and Jupyter). Close other heavy apps if your
