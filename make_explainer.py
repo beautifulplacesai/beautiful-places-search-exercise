@@ -86,17 +86,21 @@ tokenize = open_clip.get_tokenizer("ViT-B-32-quickgelu")
 MODEL = "granite4:3b"           # section 4 LLM: 2 GB, runs on any laptop
 
 def llm_ready():
-    \"\"\"Check Ollama is running and MODEL is present; pull it if missing.\"\"\"
+    \"\"\"Check Ollama is running and MODEL is present. Never downloads: a 2 GB
+    pull inside a notebook cell just looks like a hang.\"\"\"
     try:
         tags = _rq.get("http://localhost:11434/api/tags", timeout=3).json()
-        if not any(m["name"].startswith(MODEL) for m in tags.get("models", [])):
-            print(f"Downloading {MODEL} via Ollama (2 GB, a couple of minutes)...")
-            subprocess.run(["ollama", "pull", MODEL], check=True)
-        return True
-    except Exception as e:
-        print(f"Ollama not reachable ({type(e).__name__}). Sections 1-3 work fine; "
-              f"install and start Ollama before section 4.")
+    except Exception:
+        print(f"\\n  Ollama not reachable. Sections 1-3 work fine without it.")
+        print(f"  Before section 4: install Ollama, open it, then in a TERMINAL run:")
+        print(f"      ollama pull {MODEL}\\n")
         return False
+    if not any(m["name"].startswith(MODEL) for m in tags.get("models", [])):
+        print(f"\\n  Ollama is running but {MODEL} is not downloaded yet.")
+        print(f"  In a TERMINAL (not here) run:  ollama pull {MODEL}")
+        print(f"  It is 2 GB. Sections 1-3 work while it downloads.\\n")
+        return False
+    return True
 
 def fetch_image(row):
     \"\"\"Local cache first, else download from Geograph (CC BY-SA, credits in data).\"\"\"
@@ -142,8 +146,17 @@ md("""\
 - a **place name** (St James's Park Lake, Tower Bridge, ...)
 - a location (latitude, longitude)
 - a **beauty score from 0 to 10**, given by our own model. That model is a
-  CNN trained on 200,000+ ratings made by real people. Nobody else has this
-  data. It is the company's core asset.\
+  CNN trained on over **1.5 million** human ratings of **217,000** photos.
+
+Here is what the data looks like:\
+""")
+
+code("""\
+photos[["name", "category", "score", "latitude", "longitude"]].head(5)\
+""")
+
+md("""\
+And here is how the highest-scoring photos look:\
 """)
 
 code("""\
@@ -224,7 +237,7 @@ md("""\
 The swan lake wins by a lot (0.32 against 0.11 and 0.14). The sentence landed
 where it should: next to the photo that shows the same thing.
 
-And that is all a search engine is. Measure the sentence's closeness to
+And that is all a CLIP search engine is. Measure the sentence's closeness to
 **all 4,788 photos**, and show the six closest:\
 """)
 
@@ -304,7 +317,7 @@ md("""\
 ## 2 · Where search fails
 
 Beautiful Places exists to answer one question: *where is beautiful?*
-Ask our new search engine:\
+Ask our new CLIP search engine:\
 """)
 
 code("""\
@@ -317,7 +330,7 @@ print("highest beauty score in our data:     ", round(photos.score.max(), 2))\
 
 md("""\
 Nice photos. But look at the two numbers: these results average about **4.9**,
-while our data contains places scoring up to **6.9**. The search engine never
+while our data contains places scoring up to **6.9**. The CLIP search never
 looked at the beauty scores at all. It cannot. Closeness-on-the-map only
 finds photos that *look like the words* "beautiful park".
 
@@ -380,16 +393,17 @@ A name, a score, photos as evidence. This is a real answer, and only our
 data can give it.
 
 One detail worth noticing: **all five winners are water**. Nobody told the
-model to prefer water. It learned that from 200,000+ human ratings, and the
+model to prefer water. It learned that from over 1.5 million human ratings,
+and the
 research behind our scenic model found the same: water and trees drive
 scenicness. The data is showing you what people find beautiful.
 
-Now the promised question about that `max`. Run the same leaderboard for
-architecture:\
+Now the promised question about that `max`. Run the same leaderboard for the
+built-up places:\
 """)
 
 code("""\
-leaderboard(photos[photos.category == "architecture"], top=5)\
+leaderboard(photos[photos.category == "built-up"], top=5)\
 """)
 
 md("""\
@@ -398,8 +412,8 @@ of each:\
 """)
 
 code("""\
-top5_architecture = leaderboard(photos[photos.category == "architecture"], top=5)
-show_best_photo_of_each(top5_architecture, "The top 5 architecture places, best photo of each")\
+top5_built = leaderboard(photos[photos.category == "built-up"], top=5)
+show_best_photo_of_each(top5_built, "The top 5 built-up places, best photo of each")\
 """)
 
 md("""\
@@ -422,9 +436,10 @@ beautiful near me?** Our data has every photo's location, so this is one
 filter away. The distance formula for two points on the Earth is called
 haversine; take it as given.
 
-One honest simplification: "me" is **hardcoded to this room**. We typed the
-coordinates of King's College into the notebook. In the real app, your
-phone's GPS supplies them instead; everything else works exactly the same.\
+One honest simplification: "me" is **hardcoded**. We typed one set of
+coordinates in central London into the notebook. In the real app, your phone's
+GPS supplies them instead; everything else works exactly the same. Change the
+two numbers below to wherever you are.\
 """)
 
 code("""\
@@ -436,14 +451,14 @@ def haversine_km(lat1, lon1, lat2, lon2):
          + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
     return 2 * R * np.arcsin(np.sqrt(a))
 
-HERE = (51.5115, -0.1160)      # King's College London, Strand campus
+HERE = (51.5115, -0.1160)      # central London, on the Strand. Change to taste.
 
 photos["km_away"] = haversine_km(HERE[0], HERE[1],
                                  photos["latitude"], photos["longitude"])
 
 walkable = photos[photos["km_away"] <= 2.0]
 show_best_photo_of_each(leaderboard(walkable, top=5),
-                        "The most beautiful places within 2 km of this room")\
+                        "The most beautiful places within 2 km")\
 """)
 
 md("""\
@@ -455,7 +470,7 @@ after the session.\
 md("""\
 ## 3 · Creating new categories from the map
 
-Our data has only two categories: `nature` and `architecture`. If a user
+Our data has only two categories: `nature` and `built-up`. If a user
 asks for the most beautiful **bridge**, we are stuck: nothing in the data
 says which photos show bridges.
 
@@ -488,9 +503,13 @@ The photo is closest to "a photo of a park", and it is indeed a park
 (Priory Gardens). We just gave a photo a category **without training
 anything**.
 
-Now the same for all 4,788 photos, with 15 categories. Three steps in the
-code: put all 15 label sentences on the map, measure every photo against
-every label, and give each photo the label it sits closest to.\
+Now the same for all 4,788 photos, with 22 categories.
+
+Writing that list is the real work. Whatever you leave out still has to be
+called something: with no word for a boat, a warship gets labelled `canal`.
+So the list below covers what is actually in our photos, not just the pretty
+things. And when the top two labels tie, we write `unclear` rather than
+guess.\
 """)
 
 code("""\
@@ -510,20 +529,44 @@ LABELS = {
     "windmill":  "a photo of a windmill",
     "cemetery":  "a photo of an old cemetery with gravestones",
     "modern":    "a photo of modern glass architecture or skyscrapers",
+    "ship":      "a photo of a ship or boat",
+    "train":     "a photo of a train or railway station",
+    "field":     "a photo of an open field or farmland",
+    "house":     "a photo of an ordinary house or block of flats",
+    "industry":  "a photo of an industrial building or power station",
+    "playground":"a photo of a playground or sports ground",
+    "highstreet":"a photo of shops and traffic on a busy high street",
 }
 
-label_positions = embed_text(list(LABELS.values()))   # 15 positions on the map
+label_positions = embed_text(list(LABELS.values()))   # one position per label
 closeness = emb @ label_positions.T                   # every photo vs every label
 winner = closeness.argmax(axis=1)                     # per photo: closest label
 
-photos["subtype"] = np.array(list(LABELS))[winner]
+best_two = np.sort(closeness, axis=1)[:, -2:]         # if the top two nearly tie,
+too_close = (best_two[:, 1] - best_two[:, 0]) < 0.005  # we say so instead of guessing
+
+photos["subtype"] = np.where(too_close, "unclear", np.array(list(LABELS))[winner])
 photos["subtype"].value_counts()\
 """)
 
 md("""\
-Every photo now has one of 15 categories. And the leaderboard from section 2
-immediately becomes more useful. A question our data could not even express
-a minute ago: the most beautiful canal in London?\
+That is the count per category. But counts hide the thing that matters: the
+`subtype` column is now **part of our data**, sitting next to the name, the
+score and the location, exactly as if a person had typed it in.
+
+Look at the first ten rows:\
+""")
+
+code("""\
+photos[["name", "category", "subtype", "score"]].head(10)\
+""")
+
+md("""\
+A minute ago that column did not exist. It is ordinary data now, so every
+tool we have already written works on it.
+
+Here is what it buys us. A question our data could not even express before:
+the most beautiful canal in London?\
 """)
 
 code("""\
@@ -638,7 +681,13 @@ def beauty_db(subtype: str = None, top: int = 10) -> list:
     Use for any 'most beautiful / prettiest / best' question.
     subtype (optional) filters by place type, one of: church, bridge, palace,
     castle, pub, canal, riverside, park, lake, woodland, street, monument,
-    windmill, cemetery, modern.\"\"\"
+    windmill, cemetery, modern, ship, train, field, house, industry,
+    playground, highstreet.\"\"\"
+    if subtype is not None and subtype not in set(LABELS):
+        # tell the model plainly, instead of handing back an empty list it will
+        # be tempted to fill in from memory
+        return {"error": f"no such subtype '{subtype}'",
+                "valid_subtypes": sorted(LABELS)}
     d = photos if subtype is None else photos[photos.subtype == subtype]
     top_places = leaderboard(d, top)
     show_best_photo_of_each(top_places)   # display what the model sees
@@ -657,6 +706,9 @@ def near_me(km: float = 2.0) -> list:
 @tool
 def web_search(query: str) -> list:
     \"\"\"Live web search: opening times, entry fees, what a place is known for.\"\"\"
+    if not TAVILY_API_KEY:
+        # without this the tool returns nothing and the model quietly guesses
+        return {"error": "no TAVILY_API_KEY in .env, so the web is unavailable"}
     r = _rq.post("https://api.tavily.com/search",
                  json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3})
     return [{"title": h["title"], "content": h["content"][:300]}
@@ -664,10 +716,9 @@ def web_search(query: str) -> list:
 """)
 
 md("""\
-One design note on `near_me`: it is hardcoded to King's College. Run this
-notebook at home in Tokyo and it still answers as if you were on the Strand.
-In the real app, the phone's GPS replaces our typed constant; nothing else
-changes. In both cases the location comes from the application, never from
+One design note on `near_me`: the location is hardcoded. Run this notebook in
+Tokyo and it still answers as if you were in central London. In the real app,
+the phone's GPS replaces our typed constant; nothing else changes. In both cases the location comes from the application, never from
 the model. The model's only decisions are whether to use the tool, and the
 radius.\
 """)
@@ -729,11 +780,24 @@ ask("What is the most beautiful bridge in London?")\
 """)
 
 md("""\
-Not the famous river crossing everyone names. Finding beautiful
-places that fame forgot is exactly what the product is for.
+Not the famous river crossing everyone names. Finding beautiful places that
+fame forgot is exactly what the product is for.
 
-Keep an eye on which bridge it picked, and where that sits in the
-leaderboard. We come back to it in section 5.\
+Now check its homework. Compare the name it gave you with the top of the
+leaderboard it was handed:\
+""")
+
+code("""\
+leaderboard(photos[photos.subtype == "bridge"], top=5)\
+""")
+
+md("""\
+**It did not answer with the top row.** It skipped down the list to the first
+name containing the word "Bridge".
+
+You can argue it was being helpful: the winner is called a park, and the user
+asked for a bridge. But nobody asked it to make that call, and it made it
+silently. Remember this when we get to section 5.\
 """)
 
 code("""\
@@ -777,10 +841,13 @@ show_best_photo_of_each(top5_bridges, "The top 5 'bridge' places, best photo of 
 """)
 
 md("""\
-**Count the actual bridges.** Gallows Bridge, yes. Morden Hall Park has a
-small white footbridge. But the Pergola is a garden walkway, and two of the
-five are simply pretty rivers. CLIP saw water, arches and railings, and
-guessed "bridge".
+**Count the actual bridges.** Gallows Bridge and Twickenham Bridge, yes, and
+Morden Hall Park does have a small white footbridge. But the Pergola is a
+garden walkway and the Grand Union Canal is a canal. CLIP saw water, arches
+and railings, and guessed "bridge".
+
+The `unclear` rule does not save us here. These were not close calls. They
+were confident, and wrong.
 
 Its funniest single mistake: the highest-scoring "pub" in London, according
 to CLIP:\
@@ -795,6 +862,24 @@ Number one is **Shakespeare's Globe**: a theatre. It is round, timber-framed
 and old-looking, so on the map of looks it sits near the pubs. Categories by
 appearance fail exactly where appearance misleads.
 
+### How photos really get categorised
+
+Labelling by looks is the cheapest rung on a ladder. Each rung costs more than
+the one below, in labelled data, in compute, or in people's time:
+
+1. **Zero-shot labels**, what we just did. Instant and free. Fine for search
+   and prototypes.
+2. **A trained classifier**, one model per category, learned from
+   hand-labelled examples. Our beauty model is this kind.
+3. **A large vision model that looks at every image**, what our pipeline uses.
+   Its confidence is checked, and the unsure cases go further.
+4. **A person**, for what the machines cannot settle.
+
+Cheap methods handle the millions. The expensive model and the person only ever
+see the hard cases, and the `unclear` rule is how you find them.\
+""")
+
+md("""\
 **Failure 2.** The agent itself. Everything in section 4 went well: our 2 GB
 model picked the right tool every time, chained two tools without being told
 to, and quoted our scores back to us. Those are simple, well-shaped jobs, and
@@ -820,10 +905,9 @@ not looked up, it was written to sound right.
 Nothing crashed. No error, no warning. The answer simply looked right and
 was wrong, and it is the kind of wrong a user would never catch.
 
-Remember the bridge question in section 4 too. It answered with a real place
-and a real score, but not the top of the leaderboard: it skipped past the
-higher-scoring places to the first one with "Bridge" in its name. Quieter,
-same instinct.
+You already saw the quiet version of this in section 4, when it skipped the
+top of the bridge leaderboard for a name that sounded more like a bridge. Same
+instinct, no invented number, and far harder to catch.
 
 Our system prompt already forbids all of this, in as many words. We tried
 making that rule sterner and it did not help either. It simply invented a
@@ -894,24 +978,6 @@ to push on them, like we just did.
 What both failures share: they are **silent**. A wrong category, a wrong
 answer, delivered with full confidence. That is why real products test their
 outputs rather than admiring their demos.
-
-### How this is done for real
-
-When correct labels really matter, this is the ladder companies climb. Each
-step costs roughly a thousand times more per image than the one before:
-
-1. **Trained classifiers.** One model per category, trained on thousands of
-   hand-labelled examples. Reliable, but every new category needs new
-   labelled data. Our beauty model is this kind.
-2. **Zero-shot labels** (what we did in section 3). Instant and free, but
-   judges by looks. Used for prototypes, search and pre-filtering.
-3. **A large vision model that examines every image** (what our production
-   pipeline does). It must answer in a fixed format, its confidence is
-   checked, uncertain cases go to web research, and the rest go to a human.
-4. **Humans** review what the machines are unsure about.
-
-Cheap methods handle the millions; expensive methods and people see only the
-hard cases. You saw this same funnel in the lecture.
 
 Your notebook, `tryout.ipynb`, has everything from today as exercises: you
 will build the leaderboard yourself, invent your own categories, give the

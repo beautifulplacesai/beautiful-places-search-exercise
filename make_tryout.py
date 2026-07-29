@@ -47,7 +47,7 @@ a hint first: that's where the learning is).
 
 **The data:** ≈4,800 photos of ≈4,500 verified beautiful places in London,
 each with a scenic score (0–10) from Beautiful Places' model, a CNN trained on
-200,000+ human beauty ratings. Photos © Geograph contributors (CC BY-SA),
+over 1.5 million human beauty ratings of 217,000 photos. Photos © Geograph contributors (CC BY-SA),
 loaded on demand from geograph.org.uk.
 
 **Before you start** (see README for details): `uv sync` done, and for Part 5
@@ -244,7 +244,7 @@ never treat them as percentages.\
 md("""\
 ## Part 2 ⭐⭐: From photos to places
 
-Time to break the search engine. Ask it the question this company exists to
+Time to break the CLIP search engine. Ask it the question this company exists to
 answer:\
 """)
 
@@ -286,14 +286,14 @@ Some places have up to twenty photos. So a place deserves **one entry** with
 **one combined score**, and that raises a question that is secretly a
 **product decision**: is a place's beauty its **best** photo (`max`) or its
 **typical** photo (`mean`)? You saw this live in the demo: `max` crowned a
-windmill in Croydon as London's most beautiful architecture, on the strength
+windmill in Croydon as London's most beautiful built-up place, on the strength
 of one spectacular photo. Neither choice is wrong. You choose, and you own
 the consequences.
 
 **Do:** write `leaderboard(category=None, top=10)`:
 
 1. filter to the category if one is given (`photos.category` is `nature` or
-   `architecture`)
+   `built-up`)
 2. group by `name`; aggregate the score (your choice of max or mean), a photo
    count, and `latitude`/`longitude` (take the first of each)
 3. return the `top` places by beauty\
@@ -314,7 +314,7 @@ best = leaderboard("nature").index[0]
 print("Most beautiful nature spot:", best)
 show(photos[photos.name == best].nlargest(3, "score"))
 
-# then try: leaderboard("architecture")
+# then try: leaderboard("built-up")
 # and: does switching max/mean change the winner?\
 """)
 
@@ -323,8 +323,8 @@ md("""\
 ## Part 3 ⭐⭐: Teach it geography
 
 "Beautiful" is only half of what people ask. The other half is "**near me**".
-In this notebook "me" means the KCL coordinates we type below; in a real app
-the phone's GPS would supply them. The maths for distance on a sphere is
+In this notebook "me" means the coordinates we type below; in a real app the
+phone's GPS would supply them. The maths for distance on a sphere is
 called the haversine formula; here it is, ready-made:\
 """)
 
@@ -337,16 +337,16 @@ def haversine_km(lat1, lon1, lat2, lon2):
          + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2)
     return 2 * R * np.arcsin(np.sqrt(a))
 
-KCL = (51.5115, -0.1160)          # King's College London, Strand
+HERE = (51.5115, -0.1160)         # central London, on the Strand
 ST_PAULS = (51.5138, -0.0984)     # St Paul's Cathedral
 
 # sanity check: this should print roughly 1.2 km
-print(haversine_km(KCL[0], KCL[1], ST_PAULS[0], ST_PAULS[1]).round(2), "km")\
+print(haversine_km(HERE[0], HERE[1], ST_PAULS[0], ST_PAULS[1]).round(2), "km")\
 """)
 
 md("""\
-**Do (one line):** give every photo a distance from campus. Create a column
-`photos["km_from_kcl"]` using `haversine_km` with `KCL` and the
+**Do (one line):** give every photo a distance from that spot. Create a column
+`photos["km_away"]` using `haversine_km` with `HERE` and the
 `photos.latitude` / `photos.longitude` columns. It works on whole columns at
 once: no loop needed.\
 """)
@@ -354,7 +354,7 @@ once: no loop needed.\
 code("""\
 # your line here
 
-photos.nsmallest(5, "km_from_kcl")[["name", "km_from_kcl", "score"]]\
+photos.nsmallest(5, "km_away")[["name", "km_away", "score"]]\
 """)
 
 md("""\
@@ -380,7 +380,7 @@ Where would you set it for our app?\
 md("""\
 ## Part 4 ⭐⭐: Invent your own categories
 
-The data has only two categories: `nature` and `architecture`. Ask it for
+The data has only two categories: `nature` and `built-up`. Ask it for
 "the most beautiful *bridge*" and it cannot even filter to bridges.
 
 The vectors fix this too. Watch the mechanism on **one photo and three
@@ -514,7 +514,7 @@ from langchain.agents import create_agent
 def beauty_leaderboard(category: str = "nature") -> list:
     \"\"\"Rank London places by MEASURED beauty (scenic model, 0-10).
     Use for any 'most beautiful / prettiest / best' question.
-    category: 'nature' or 'architecture'.\"\"\"
+    category: 'nature' or 'built-up'.\"\"\"
     return leaderboard(category).reset_index().round(2).to_dict("records")
 
 agent = create_agent(llm, [beauty_leaderboard])
@@ -537,7 +537,7 @@ Watch the trace: the model **decided by itself** to call your function, read
 the result, and answered from it. Nobody wrote an if-statement. That
 decision is the new ingredient.
 
-**Step 4: a second tool, and watch it choose.** Wrap the search engine from
+**Step 4: a second tool, and watch it choose.** Wrap the CLIP search from
 Part 0 the same way. Then two very different questions. **Before running:
 which tool do you expect each question to trigger?**\
 """)
@@ -571,7 +571,7 @@ def near_me(km: float = 2.0) -> list:
     ...
 
 agent = create_agent(llm, [beauty_leaderboard, search_photos, near_me])
-ask("I'm at King's College on the Strand. Where's somewhere beautiful I can walk to?")\
+ask("I'm in central London. Where's somewhere beautiful I can walk to?")\
 """)
 
 # ================================================================ part 6
@@ -665,12 +665,13 @@ and system prompt's? Fix and rerun.\
 md("""\
 ## Part 8 ⭐⭐⭐⭐: Extensions (pick one of two)
 
-**A. The model that can see.** Gemma 4 is multimodal. Send your top-4 photos
-(the files are cached in `data/img_cache/`) plus the user's query, and let
-it pick the single best match, with a reason. You will have built a
-two-stage ranker: cheap CLIP recall, then a smart visual rerank. First
-step: `import ollama`, then one `ollama.chat(model=MODEL, messages=[...])`
-call with an `images=[path]` argument.
+**A. The model that can see.** Our local model reads text only, but Gemini
+can look at pictures. Send your top-4 photos (the files are cached in
+`data/img_cache/`) plus the user's query, and let it pick the single best
+match, with a reason. You will have built a two-stage ranker: cheap CLIP
+recall, then a smart visual rerank. First step: `from langchain_google_genai
+import ChatGoogleGenerativeAI`, then pass the images as message content
+alongside your question. Needs `GOOGLE_API_KEY` in `.env`.
 
 **B. The ranking formula.** "Most beautiful park" ignores relevance; "misty
 park" ignores beauty. Build `hybrid_search(query, alpha)` ranking by
