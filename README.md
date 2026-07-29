@@ -24,7 +24,18 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 **Then open a new terminal window.** Freshly installed commands (`uv`,
 `ollama`) are not found in terminals that were already open.
 
-**2. Clone and install** (grabs Python deps incl. PyTorch, a few minutes):
+**2. Get the code and install** (grabs Python deps incl. PyTorch, a few minutes).
+
+**No git needed.** Click the green **Code** button at the top of
+[this page](https://github.com/beautifulplacesai/beautiful-places-search-exercise),
+choose **Download ZIP**, and unzip it. Then in a terminal, `cd` into the folder
+you just unzipped and run:
+
+```bash
+uv sync
+```
+
+If you do have git and prefer it:
 
 ```bash
 git clone https://github.com/beautifulplacesai/beautiful-places-search-exercise.git
@@ -99,7 +110,8 @@ CC BY-SA 2.0, fetched on demand with attribution in the data (`credits` column).
 
 ## Troubleshooting
 
-- **`clip` fails to install** → it comes from GitHub; make sure `git` is installed.
+- **`uv sync` fails** → make sure you are in the folder that contains
+  `pyproject.toml`. Everything installs from PyPI, so no git is required.
 - **Part 4 hangs** → is Ollama running? (`ollama list` should reply). First LLM
   call also loads the model, give it ~30 s.
 - **Model very slow** → check `ollama ps`; if another, larger model is loaded,

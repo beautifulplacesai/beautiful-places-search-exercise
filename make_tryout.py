@@ -71,7 +71,7 @@ import requests as _rq
 from pathlib import Path
 from PIL import Image
 from dotenv import load_dotenv
-import torch, clip
+import torch, open_clip
 
 load_dotenv()                          # reads the gitignored .env file (Part 7)
 DATA = Path("data")
@@ -82,7 +82,9 @@ emb = np.load(DATA / "london5k_embeddings.npy")
 
 device = ("mps" if torch.backends.mps.is_available()
           else "cuda" if torch.cuda.is_available() else "cpu")
-model, _ = clip.load("ViT-B/32", device=device)   # the same model Beautiful Places uses
+model, _, _ = open_clip.create_model_and_transforms(   # the model Beautiful Places uses
+    "ViT-B-32-quickgelu", pretrained="openai", device=device)
+tokenize = open_clip.get_tokenizer("ViT-B-32-quickgelu")
 MODEL = "granite4:3b"                             # LLM for Part 5+: 2 GB, runs on any laptop
 
 def fetch_image(row):
@@ -128,7 +130,7 @@ code("""\
 def embed_text(texts):
     \"\"\"One vector per sentence, in the same space as the photo vectors.\"\"\"
     with torch.no_grad():
-        toks = clip.tokenize(texts, truncate=True).to(device)
+        toks = tokenize(texts).to(device)
         vecs = model.encode_text(toks)
         vecs = vecs / vecs.norm(dim=-1, keepdim=True)
     return vecs.cpu().numpy()

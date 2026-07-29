@@ -11,12 +11,12 @@ dependencies = [
     "pillow>=10",
     "requests>=2.31",
     "torch>=2.2",
-    "clip @ git+https://github.com/openai/CLIP.git",
     "jupyter>=1.0",
     "langchain>=1.0",
     "langchain-ollama>=1.0",
     "python-dotenv>=1.2.2",
     "langchain-google-genai>=4.3.2",
+    "open-clip-torch>=3.3.0",
 ]
 
 [tool.uv]

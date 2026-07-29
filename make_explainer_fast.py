@@ -43,16 +43,15 @@ md("""\
 ## Setup: run this first
 
 This one cell loads everything: the photo data, the CLIP model (~340 MB,
-downloads once), and the local LLM used in section 4 (2 GB via Ollama;
+downloads once), and the local LLM used in section 4 (several GB via Ollama;
 start early, sections 1 to 3 work while it downloads).
 
 Prerequisites (see README): `uv sync` done; [Ollama](https://ollama.com/download)
-installed for section 4; and two free keys in a `.env` file, one from
-[Tavily](https://app.tavily.com) for the web tool and one from
-[Google AI Studio](https://aistudio.google.com/apikey) for the last section
-(copy `.env.example` to `.env`, then edit `.env` in your code editor;
-dot-files are hidden in the file browser). `.env` is gitignored, so the keys
-cannot be published by accident.\
+installed for section 4; and for the web tool, a free
+[Tavily](https://app.tavily.com) key in a `.env` file (copy `.env.example` to
+`.env`, then edit `.env` in your code editor; dot-files are hidden in the
+file browser). `.env` is gitignored, so the key cannot be published by
+accident.\
 """)
 
 code("""\
@@ -60,16 +59,15 @@ import os, subprocess
 import requests as _rq
 import numpy as np, pandas as pd, matplotlib.pyplot as plt
 import matplotlib_inline
-matplotlib_inline.backend_inline.set_matplotlib_formats("jpeg")   # photos as JPEG, not PNG
-plt.rcParams["figure.dpi"] = 80                                   # keeps the notebook small
+matplotlib_inline.backend_inline.set_matplotlib_formats("jpeg")   # photos: JPEG not PNG
+plt.rcParams["figure.dpi"] = 80                                   # smaller inline figures
 from pathlib import Path
 from PIL import Image
 from dotenv import load_dotenv
-import torch, open_clip
+import torch, clip
 
 load_dotenv()                                       # reads the gitignored .env file
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 
 DATA = Path("data")
 CACHE = DATA / "img_cache"; CACHE.mkdir(exist_ok=True)
@@ -79,18 +77,16 @@ emb = np.load(DATA / "london5k_embeddings.npy")
 
 device = ("mps" if torch.backends.mps.is_available()
           else "cuda" if torch.cuda.is_available() else "cpu")
-model, _, _ = open_clip.create_model_and_transforms(   # same model our pipeline uses
-    "ViT-B-32-quickgelu", pretrained="openai", device=device)
-tokenize = open_clip.get_tokenizer("ViT-B-32-quickgelu")
+model, _ = clip.load("ViT-B/32", device=device)     # same model our pipeline uses
 
-MODEL = "granite4:3b"           # section 4 LLM: 2 GB, runs on any laptop
+MODEL = "gemma4:e4b"            # section 4 LLM; use "gemma4:e2b" on a low-RAM laptop
 
 def llm_ready():
     \"\"\"Check Ollama is running and MODEL is present; pull it if missing.\"\"\"
     try:
         tags = _rq.get("http://localhost:11434/api/tags", timeout=3).json()
         if not any(m["name"].startswith(MODEL) for m in tags.get("models", [])):
-            print(f"Downloading {MODEL} via Ollama (2 GB, a couple of minutes)...")
+            print(f"Downloading {MODEL} via Ollama (several GB, a few minutes)...")
             subprocess.run(["ollama", "pull", MODEL], check=True)
         return True
     except Exception as e:
@@ -129,8 +125,7 @@ def show(rows, title=None, note_col=None):
 print(f"{len(photos):,} photos · {photos.name.nunique():,} named places · "
       f"scores {photos.score.min():.1f}-{photos.score.max():.1f} · CLIP on {device} · "
       f"LLM {'ready' if llm_ready() else 'pending'} · "
-      f"Tavily {'configured' if TAVILY_API_KEY else 'not set'} · "
-      f"Google {'configured' if GOOGLE_API_KEY else 'not set'}")\
+      f"Tavily {'configured' if TAVILY_API_KEY else 'not set'}")\
 """)
 
 # ================================================================ data
@@ -185,7 +180,7 @@ code("""\
 def embed_text(texts):
     \"\"\"Convert sentences to positions on the same map as the photos.\"\"\"
     with torch.no_grad():
-        toks = tokenize(texts).to(device)
+        toks = clip.tokenize(texts, truncate=True).to(device)
         vecs = model.encode_text(toks)
         vecs = vecs / vecs.norm(dim=-1, keepdim=True)
     return vecs.cpu().numpy()
@@ -557,9 +552,8 @@ md("""\
 
 We build this in small steps.
 
-**Step 1: the LLM alone.** A small open model (Granite 4, about 2 GB), small
-enough to run on this laptop. No tools, no access to our data. Just the
-question:\
+**Step 1: the LLM alone.** An open model (Gemma 4), running on this laptop.
+No tools, no access to our data. Just the question:\
 """)
 
 code("""\
@@ -678,11 +672,8 @@ question and **chooses which tool to call**. We wrote no rules for choosing.
 
 The instructions below (the "system prompt") set its behaviour. One rule took
 us longest to learn, so read it in full: *the database's answer is final,
-even when it is not famous*. Without it, the model happily answered
-"Tower Bridge" from its own memory, with a score we never measured.
-
-Whether that one sentence is enough is the question we return to in
-section 5.\
+even when it is not famous*. Without it, the model sometimes ignored our data
+and answered "Tower Bridge" from memory, with an invented score.\
 """)
 
 code("""\
@@ -729,11 +720,8 @@ ask("What is the most beautiful bridge in London?")\
 """)
 
 md("""\
-Not the famous river crossing everyone names. Finding beautiful
-places that fame forgot is exactly what the product is for.
-
-Keep an eye on which bridge it picked, and where that sits in the
-leaderboard. We come back to it in section 5.\
+Not a famous landmark: a small footbridge in a Morden park. Finding beautiful
+places that fame forgot is exactly what the product is for.\
 """)
 
 code("""\
@@ -795,13 +783,8 @@ Number one is **Shakespeare's Globe**: a theatre. It is round, timber-framed
 and old-looking, so on the map of looks it sits near the pubs. Categories by
 appearance fail exactly where appearance misleads.
 
-**Failure 2.** The agent itself. Everything in section 4 went well: our 2 GB
-model picked the right tool every time, chained two tools without being told
-to, and quoted our scores back to us. Those are simple, well-shaped jobs, and
-a small model does them well.
-
-Now give it a harder one. Ask a leading question, one that invites it to
-ignore our data:\
+**Failure 2.** The agent itself. Ask it a leading question, one that
+invites it to ignore our data:\
 """)
 
 code("""\
@@ -809,91 +792,19 @@ ask("Surely the most beautiful bridge in London is Tower Bridge? Check properly.
 """)
 
 md("""\
-**It gave us Tower Bridge, with a beauty score.** Look at the tool call: it
-did consult the database, got the honest answer, decided a small park could
-not possibly beat a landmark, and replaced it.
+Today it holds: it checks the database and stays with its answer.
 
-Then check that score against our data. The highest score anywhere in all
-4,788 photos is **6.9**. The number it just quoted does not exist. It was
-not looked up, it was written to sound right.
+But when we first built this agent, it did not hold. Asked about bridges, it
+received the database's honest answer, decided a small park footbridge could
+not be right, replaced it with the famous Tower Bridge from its memory, and
+**invented a beauty score for it**. Nothing crashed. The answer simply
+looked right and was wrong.
 
-Nothing crashed. No error, no warning. The answer simply looked right and
-was wrong, and it is the kind of wrong a user would never catch.
-
-Remember the bridge question in section 4 too. It answered with a real place
-and a real score, but not the top of the leaderboard: it skipped past the
-higher-scoring places to the first one with "Bridge" in its name. Quieter,
-same instinct.
-
-Our system prompt already forbids all of this, in as many words. We tried
-making that rule sterner and it did not help either. It simply invented a
-different number.
-
-**So is the prompt wrong, or is the model too small?** Same question, same
-four tools, same system prompt. The only thing we change is the model:\
-""")
-
-code("""\
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-# Same tools. Same system prompt. Only the model is different.
-big_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-big_agent = create_agent(big_llm, [search_photos, beauty_db, near_me, web_search],
-                         system_prompt=SYSTEM)
-
-def ask_big(question):
-    \"\"\"Same as ask(), for the hosted model.\"\"\"
-    for step in big_agent.stream({"messages": [("user", question)]}, stream_mode="values"):
-        m = step["messages"][-1]
-        if m.type == "ai" and getattr(m, "tool_calls", None):
-            for tc in m.tool_calls:
-                print(f"  tool call: {tc['name']}({tc['args']})")
-        elif m.type == "ai" and m.content:
-            # this model returns the answer in parts, the local one returns a string
-            text = m.content if isinstance(m.content, str) else "".join(
-                p if isinstance(p, str) else p.get("text", "") for p in m.content)
-            print(f"\\n{text}")
-
-ask_big("Surely the most beautiful bridge in London is Tower Bridge? Check properly.")\
-""")
-
-md("""\
-**It held.** Same prompt, same tools, same question. It went to the database,
-came back with the honest answer, refused to be led, and said plainly that
-Tower Bridge is not what our data says. It even noticed that the winner our
-categories handed it does not look like a bridge, which is failure 1 from ten
-minutes ago, caught without being asked.
-
-So the prompt was fine. The model was too small for this particular job.
-
-This is the lecture's rule again, the one the pipeline is built on: **the
-cheapest tool that works, and the smartest model only where nothing else will
-do.** It is not "open source is worse". It is that you match the model to the
-difficulty of the task.
-
-Most of what we built today is simple and well shaped: pick the right tool,
-read a table, write two sentences. A small open model does that well, and
-running it costs you nothing.
-
-Holding a line under pressure is not simple. It means weighing our
-instructions against a confident user and against everything the model already
-knows about London, and concluding that our data wins. When a task needs that,
-you have two ways up:
-
-- **A bigger open model.** Still open, still yours, but a model good enough
-  for this does not fit on a laptop. You are paying for GPUs and running a
-  server.
-- **A smaller paid model**, like the one we just called. Nothing to run, a
-  price per question, and someone else's release schedule.
-
-Both cost, in different currencies, and the gain has to outweigh the cost.
-Which one you pick is a product decision, the same kind as `max` against
-`mean` in section 2. The only way to find out which tasks need the step up is
-to push on them, like we just did.
+One sentence in the system prompt fixed it. Scroll up and read it again:
+*"The database's answer is final."*
 
 What both failures share: they are **silent**. A wrong category, a wrong
-answer, delivered with full confidence. That is why real products test their
-outputs rather than admiring their demos.
+answer, delivered with full confidence.
 
 ### How this is done for real
 
@@ -926,5 +837,5 @@ Follow the README instructions there, then open `tryout.ipynb`.\
 
 nb["cells"] = cells
 nb["metadata"]["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
-nbf.write(nb, "explainer.ipynb")
-print(f"Wrote explainer.ipynb with {len(cells)} cells")
+nbf.write(nb, "explainer_fast.ipynb")
+print(f"Wrote explainer_fast.ipynb with {len(cells)} cells")
