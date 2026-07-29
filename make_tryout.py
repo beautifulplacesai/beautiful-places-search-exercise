@@ -51,8 +51,8 @@ each with a scenic score (0–10) from Beautiful Places' model, a CNN trained on
 loaded on demand from geograph.org.uk.
 
 **Before you start** (see README for details): `uv sync` done, and for Part 5
-onwards, Ollama installed with a model pulled (`ollama pull gemma4:e4b`, or
-`gemma4:e2b` on a low-RAM laptop, then change `MODEL` below).\
+onwards, Ollama installed with the model pulled (`ollama pull granite4:3b`,
+a 2 GB download that runs on any laptop).\
 """)
 
 # ================================================================ part 0
@@ -83,7 +83,7 @@ emb = np.load(DATA / "london5k_embeddings.npy")
 device = ("mps" if torch.backends.mps.is_available()
           else "cuda" if torch.cuda.is_available() else "cpu")
 model, _ = clip.load("ViT-B/32", device=device)   # the same model Beautiful Places uses
-MODEL = "gemma4:e4b"                              # LLM for Part 5+ ("gemma4:e2b" if low RAM)
+MODEL = "granite4:3b"                             # LLM for Part 5+: 2 GB, runs on any laptop
 
 def fetch_image(row):
     p = CACHE / row["photos"]
@@ -458,7 +458,7 @@ their own words, in their own language. This part connects an LLM to your
 functions, in five small steps.
 
 *(Needs Ollama running with your `MODEL` pulled. The first call also loads
-the model into memory: give it ~30 seconds.)*
+the model into memory: give it ~15 seconds. Calls after that are quicker.)*
 
 **Step 1: the model alone.** No tools, no data. Just ask it.\
 """)

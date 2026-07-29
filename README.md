@@ -7,8 +7,8 @@ from the session: welcome, the three setup steps below take a few minutes.
 You'll build, on your own laptop: a **semantic photo search engine** (CLIP
 embeddings) over ~5,000 verified beautiful places in London → discover where
 similarity search breaks → fix it with a **LangChain agent** running a local
-open-source LLM (Gemma 4) over real measured-beauty data, one that answers
-with a *why*.
+open-source LLM (Granite 4) over real measured-beauty data, one that answers
+with a *why* → then find where a small local model runs out of road.
 
 ## Setup (do this before / at the start of the session)
 
@@ -36,27 +36,28 @@ uv sync
 needed from Part 4 of the notebook, so you can start without it):
 
 ```bash
-ollama pull gemma4:e4b     # 10 GB download, ~4 GB of memory when running.
-                           # Good if your laptop has 16 GB of memory.
-# If your laptop has 8 GB of memory, use the smaller model instead:
-ollama pull gemma4:e2b     # then set MODEL = "gemma4:e2b" in the notebook
+ollama pull granite4:3b    # 2 GB download, runs on any laptop
 ```
 
-While the notebooks run, expect them to use 6 to 7 GB of memory in total
+While the notebooks run, expect them to use 4 to 5 GB of memory in total
 (the LLM, the CLIP model, and Jupyter). Close other heavy apps if your
 laptop feels slow.
 
-**4. Tavily key (web-search parts only):** sign up free at
-[app.tavily.com](https://app.tavily.com) (no card; 1,000 searches/month), then:
+**4. Two free keys (web search, and the last section):**
+
+- [app.tavily.com](https://app.tavily.com) for web search (no card;
+  1,000 searches/month)
+- [aistudio.google.com/apikey](https://aistudio.google.com/apikey) for the
+  hosted model the last section compares against (no card)
 
 ```bash
 cp .env.example .env
 ```
 
-Then open the `.env` file **in your code editor** and paste your key in.
+Then open the `.env` file **in your code editor** and paste both keys in.
 (File names starting with a dot are hidden in Finder and File Explorer, so
 use your editor or the terminal, not the file browser.) `.env` is
-gitignored, so the key stays on your machine.
+gitignored, so the keys stay on your machine.
 
 ## Run
 
@@ -95,6 +96,7 @@ CC BY-SA 2.0, fetched on demand with attribution in the data (`credits` column).
 - **`clip` fails to install** → it comes from GitHub; make sure `git` is installed.
 - **Part 4 hangs** → is Ollama running? (`ollama list` should reply). First LLM
   call also loads the model, give it ~30 s.
-- **Low RAM / model very slow** → use `gemma4:e2b` and set `MODEL` accordingly.
+- **Model very slow** → check `ollama ps`; if another, larger model is loaded,
+  run `ollama stop <name>` to free the memory.
 - **Images not loading** → venue wifi may throttle; results still work (names +
   scores), photos fill in as the cache warms.
