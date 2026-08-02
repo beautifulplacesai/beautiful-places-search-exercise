@@ -64,7 +64,7 @@ laptop feels slow.
 - [app.tavily.com](https://app.tavily.com) for web search (no card;
   1,000 searches/month)
 - [aistudio.google.com/apikey](https://aistudio.google.com/apikey) for the
-  hosted model the last section compares against (no card)
+  hosted model the last section compares against (Optional)
 
 ```bash
 cp .env.example .env
