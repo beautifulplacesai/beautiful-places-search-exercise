@@ -1,8 +1,7 @@
 # Find Me a Beautiful Place 🌅
 
 Hands-on AI exercise from a [Beautiful Places](https://www.beautifulplaces.ai/)
-guest session. If you are here from the session: welcome, the setup steps below
-take a few minutes.
+guest lecture session. 
 
 You'll build, on your own laptop: a **semantic photo search engine** (CLIP
 embeddings) over ~5,000 verified beautiful places in London → discover where
